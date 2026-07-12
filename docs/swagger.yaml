@@ -1,0 +1,251 @@
+basePath: /api
+definitions:
+  yupao-go_internal_core.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      description:
+        type: string
+      message:
+        type: string
+    type: object
+  yupao-go_internal_domain_user.LoginParams:
+    properties:
+      userAccount:
+        type: string
+      userPassword:
+        type: string
+    type: object
+  yupao-go_internal_domain_user.RegisterParams:
+    properties:
+      checkPassword:
+        type: string
+      planetCode:
+        type: string
+      userAccount:
+        type: string
+      userPassword:
+        type: string
+    type: object
+  yupao-go_internal_domain_user.User:
+    properties:
+      avatarUrl:
+        type: string
+      createTime:
+        type: string
+      email:
+        type: string
+      gender:
+        type: integer
+      id:
+        type: integer
+      phone:
+        type: string
+      planetCode:
+        type: string
+      tags:
+        type: string
+      userAccount:
+        type: string
+      userRole:
+        type: integer
+      userStatus:
+        type: integer
+      username:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: yupao-go 后端接口文档
+  title: 伙伴匹配系统 API
+  version: "1.0"
+paths:
+  /user/current:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yupao-go_internal_domain_user.User'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+      summary: 获取当前登录用户
+      tags:
+      - user
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登录参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/yupao-go_internal_domain_user.LoginParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yupao-go_internal_domain_user.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+      summary: 用户登录
+      tags:
+      - user
+  /user/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+      summary: 用户注销
+      tags:
+      - user
+  /user/match:
+    get:
+      parameters:
+      - description: 推荐数量
+        in: query
+        maximum: 20
+        minimum: 1
+        name: num
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yupao-go_internal_domain_user.User'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+      summary: 匹配相似用户
+      tags:
+      - user
+  /user/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 注册参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/yupao-go_internal_domain_user.RegisterParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - properties:
+                data:
+                  format: int64
+                  type: integer
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+      summary: 用户注册
+      tags:
+      - user
+  /user/search/tags:
+    get:
+      parameters:
+      - collectionFormat: csv
+        description: 标签列表
+        in: query
+        items:
+          type: string
+        name: tagNameList
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yupao-go_internal_domain_user.User'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+      summary: 根据标签搜索用户
+      tags:
+      - user
+  /user/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/yupao-go_internal_domain_user.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/yupao-go_internal_core.Response'
+      summary: 更新用户信息
+      tags:
+      - user
+swagger: "2.0"
