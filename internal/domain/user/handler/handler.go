@@ -1,17 +1,17 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 
 	"yupao-go/internal/core"
 	"yupao-go/internal/domain/user"
+	"yupao-go/internal/middleware"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
-const sessionKeyUserID = "userID"
+const sessionKeyUserID = middleware.SessionKeyUserID
 
 type UserHandler struct {
 	svc *user.Service
@@ -33,15 +33,15 @@ func NewUserHandler(svc *user.Service) *UserHandler {
 func (h *UserHandler) Register(c *gin.Context) {
 	var params user.RegisterParams
 	if err := c.ShouldBindJSON(&params); err != nil {
-		respondBindingError(c, err)
+		core.RespondBindingError(c, err)
 		return
 	}
 	id, err := h.svc.Register(c.Request.Context(), params)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
-	respondOK(c, id)
+	core.RespondOK(c, id)
 }
 
 // Login
@@ -56,18 +56,18 @@ func (h *UserHandler) Register(c *gin.Context) {
 func (h *UserHandler) Login(c *gin.Context) {
 	var params user.LoginParams
 	if err := c.ShouldBindJSON(&params); err != nil {
-		respondBindingError(c, err)
+		core.RespondBindingError(c, err)
 		return
 	}
 	u, err := h.svc.Login(c.Request.Context(), params.UserAccount, params.UserPassword)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
 	session := sessions.Default(c)
 	session.Set(sessionKeyUserID, u.ID)
 	session.Save()
-	respondOK(c, u)
+	core.RespondOK(c, u)
 }
 
 // Logout
@@ -80,7 +80,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	session.Save()
-	respondOK(c, nil)
+	core.RespondOK(c, nil)
 }
 
 // CurrentUser
@@ -91,17 +91,17 @@ func (h *UserHandler) Logout(c *gin.Context) {
 // @Failure  401 {object} core.Response
 // @Router   /user/current [get]
 func (h *UserHandler) CurrentUser(c *gin.Context) {
-	u, err := h.getLoginUser(c)
+	uid, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
-	fresh, err := h.svc.GetByID(c.Request.Context(), u.ID)
+	fresh, err := h.svc.GetByID(c.Request.Context(), uid)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
-	respondOK(c, fresh)
+	core.RespondOK(c, fresh)
 }
 
 // SearchByTags
@@ -116,10 +116,10 @@ func (h *UserHandler) SearchByTags(c *gin.Context) {
 	tags := c.QueryArray("tagNameList")
 	users, err := h.svc.SearchByTags(c.Request.Context(), tags)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
-	respondOK(c, users)
+	core.RespondOK(c, users)
 }
 
 // Update
@@ -133,22 +133,22 @@ func (h *UserHandler) SearchByTags(c *gin.Context) {
 // @Failure  403  {object} core.Response
 // @Router   /user/update [post]
 func (h *UserHandler) Update(c *gin.Context) {
-	loginUser, err := h.getLoginUser(c)
+	loginUserID, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
 	var target user.User
 	if err := c.ShouldBindJSON(&target); err != nil {
-		respondBindingError(c, err)
+		core.RespondBindingError(c, err)
 		return
 	}
-	err = h.svc.Update(c.Request.Context(), target.ID, &target, loginUser.ID)
+	err = h.svc.Update(c.Request.Context(), target.ID, &target, loginUserID)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
-	respondOK(c, nil)
+	core.RespondOK(c, nil)
 }
 
 // MatchUsers
@@ -163,56 +163,25 @@ func (h *UserHandler) MatchUsers(c *gin.Context) {
 	numStr := c.Query("num")
 	num, err := strconv.Atoi(numStr)
 	if err != nil || num <= 0 || num > 20 {
-		respondError(c, core.NewBizErrorWithDetail(core.ParamsError, "num 需在 1-20 之间"))
+		core.RespondError(c, core.NewBizErrorWithDetail(core.ParamsError, "num 需在 1-20 之间"))
 		return
 	}
-	loginUser, err := h.getLoginUser(c)
+	loginUserID, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
+		return
+	}
+	loginUser, err := h.svc.GetByID(c.Request.Context(), loginUserID)
+	if err != nil {
+		core.RespondError(c, err)
 		return
 	}
 	users, err := h.svc.MatchUsers(c.Request.Context(), num, loginUser)
 	if err != nil {
-		respondError(c, err)
+		core.RespondError(c, err)
 		return
 	}
-	respondOK(c, users)
+	core.RespondOK(c, users)
 }
 
-func (h *UserHandler) AuthRequired() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		uid := session.Get(sessionKeyUserID)
-		if uid == nil {
-			c.JSON(http.StatusUnauthorized, core.FailWithCode(core.NotLogin, ""))
-			c.Abort()
-			return
-		}
-		c.Set(sessionKeyUserID, uid)
-		c.Next()
-	}
-}
 
-func (h *UserHandler) getLoginUser(c *gin.Context) (*user.User, error) {
-	uid, exists := c.Get(sessionKeyUserID)
-	if !exists {
-		return nil, core.NewBizError(core.NotLogin)
-	}
-	id, ok := uid.(int64)
-	if !ok {
-		return nil, core.NewBizError(core.NotLogin)
-	}
-	return h.svc.GetByID(c.Request.Context(), id)
-}
-
-func respondOK(c *gin.Context, data any) {
-	c.JSON(http.StatusOK, core.OK(data))
-}
-
-func respondError(c *gin.Context, err error) {
-	c.JSON(core.HTTPCodeFromErr(err), core.Fail(err))
-}
-
-func respondBindingError(c *gin.Context, err error) {
-	c.JSON(http.StatusBadRequest, core.FailWithCode(core.ParamsError, err.Error()))
-}

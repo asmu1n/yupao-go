@@ -5,6 +5,7 @@ import (
 	"yupao-go/internal/domain/user"
 	userHandler "yupao-go/internal/domain/user/handler"
 	userRepo "yupao-go/internal/domain/user/repo"
+	"yupao-go/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +20,7 @@ func registerUser(api *gin.RouterGroup, client *ent.Client) {
 		u.POST("/register", h.Register)
 		u.POST("/login", h.Login)
 
-		auth := u.Group("", h.AuthRequired())
+		auth := u.Group("", middleware.AuthRequired())
 		{
 			auth.POST("/logout", h.Logout)
 			auth.GET("/current", h.CurrentUser)
