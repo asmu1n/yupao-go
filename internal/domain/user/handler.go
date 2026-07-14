@@ -45,6 +45,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 // Login
 // @Summary  用户登录
+// @Description 用户登录接口，成功后写入 session cookie
 // @Tags     user
 // @Accept   json
 // @Produce  json
@@ -73,6 +74,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 // @Summary  用户注销
 // @Tags     user
 // @Produce  json
+// @Security SessionAuth
 // @Success  200 {object} resp.Response
 // @Router   /user/logout [post]
 func (h *UserHandler) Logout(c *gin.Context) {
@@ -86,6 +88,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 // @Summary  获取当前登录用户
 // @Tags     user
 // @Produce  json
+// @Security SessionAuth
 // @Success  200 {object} resp.Response{data=user.User}
 // @Failure  401 {object} resp.Response
 // @Router   /user/current [get]
@@ -107,6 +110,7 @@ func (h *UserHandler) CurrentUser(c *gin.Context) {
 // @Summary  根据标签搜索用户
 // @Tags     user
 // @Produce  json
+// @Security SessionAuth
 // @Param    tagNameList query    []string true "标签列表"
 // @Success  200         {object} resp.Response{data=[]user.User}
 // @Failure  400         {object} resp.Response
@@ -126,6 +130,7 @@ func (h *UserHandler) SearchByTags(c *gin.Context) {
 // @Tags     user
 // @Accept   json
 // @Produce  json
+// @Security SessionAuth
 // @Param    body body     user.User true "用户信息"
 // @Success  200  {object} resp.Response
 // @Failure  400  {object} resp.Response
@@ -154,6 +159,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Summary  匹配相似用户
 // @Tags     user
 // @Produce  json
+// @Security SessionAuth
 // @Param    num query    int true "推荐数量" minimum(1) maximum(20)
 // @Success  200 {object} resp.Response{data=[]user.User}
 // @Failure  400 {object} resp.Response
