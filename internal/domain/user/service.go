@@ -22,7 +22,7 @@ func NewService(repo Repository) *Service {
 }
 
 // Register 用户注册，校验参数 + 查重 + bcrypt 加密后入库，返回新用户 ID
-func (s *Service) Register(ctx context.Context, p registerParams) (int64, error) {
+func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error) {
 	if !validAccountPattern.MatchString(p.UserAccount) {
 		return 0, resp.NewBizErrorWithDetail(resp.ParamsError, "账号包含特殊字符")
 	}

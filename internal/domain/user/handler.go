@@ -30,7 +30,7 @@ func NewUserHandler(svc *Service) *UserHandler {
 // @Failure  400  {object} resp.Response
 // @Router   /user/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
-	var params registerParams
+	var params RegisterParams
 	if err := c.ShouldBindJSON(&params); err != nil {
 		resp.RespondBindingError(c, err)
 		return
@@ -54,7 +54,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 // @Failure  400  {object} resp.Response
 // @Router   /user/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
-	var params loginParams
+	var params LoginParams
 	if err := c.ShouldBindJSON(&params); err != nil {
 		resp.RespondBindingError(c, err)
 		return

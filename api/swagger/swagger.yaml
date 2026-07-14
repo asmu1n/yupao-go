@@ -1,34 +1,47 @@
 basePath: /api
 definitions:
-  yupao-go_internal_core.Response:
+  resp.Response:
     properties:
       code:
         type: integer
       data: {}
-      description:
-        type: string
       message:
         type: string
     type: object
-  yupao-go_internal_domain_user.LoginParams:
+  user.LoginParams:
     properties:
       userAccount:
+        minLength: 4
         type: string
       userPassword:
+        minLength: 8
         type: string
+    required:
+    - userAccount
+    - userPassword
     type: object
-  yupao-go_internal_domain_user.RegisterParams:
+  user.RegisterParams:
     properties:
       checkPassword:
+        minLength: 8
         type: string
       planetCode:
+        maxLength: 20
         type: string
       userAccount:
+        maxLength: 256
+        minLength: 4
         type: string
       userPassword:
+        minLength: 8
         type: string
+    required:
+    - checkPassword
+    - planetCode
+    - userAccount
+    - userPassword
     type: object
-  yupao-go_internal_domain_user.User:
+  user.User:
     properties:
       avatarUrl:
         type: string
@@ -37,7 +50,7 @@ definitions:
       email:
         type: string
       gender:
-        type: integer
+        $ref: '#/definitions/usertype.Gender'
       id:
         type: integer
       phone:
@@ -55,11 +68,20 @@ definitions:
       username:
         type: string
     type: object
+  usertype.Gender:
+    enum:
+    - 1
+    - 2
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - GenderMale
+    - GenderFemale
 host: localhost:8080
 info:
   contact: {}
-  description: yupao-go 后端接口文档
-  title: 伙伴匹配系统 API
+  description: 伙伴匹配系统后端接口文档
+  title: Yupao Go API
   version: "1.0"
 paths:
   /user/current:
@@ -71,15 +93,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - $ref: '#/definitions/resp.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/yupao-go_internal_domain_user.User'
+                  $ref: '#/definitions/user.User'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
+      security:
+      - SessionAuth: []
       summary: 获取当前登录用户
       tags:
       - user
@@ -87,13 +111,14 @@ paths:
     post:
       consumes:
       - application/json
+      description: 用户登录接口，成功后写入 session cookie
       parameters:
       - description: 登录参数
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/yupao-go_internal_domain_user.LoginParams'
+          $ref: '#/definitions/user.LoginParams'
       produces:
       - application/json
       responses:
@@ -101,15 +126,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - $ref: '#/definitions/resp.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/yupao-go_internal_domain_user.User'
+                  $ref: '#/definitions/user.User'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
       summary: 用户登录
       tags:
       - user
@@ -121,7 +146,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
+      security:
+      - SessionAuth: []
       summary: 用户注销
       tags:
       - user
@@ -142,17 +169,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - $ref: '#/definitions/resp.Response'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/yupao-go_internal_domain_user.User'
+                    $ref: '#/definitions/user.User'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
+      security:
+      - SessionAuth: []
       summary: 匹配相似用户
       tags:
       - user
@@ -166,7 +195,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/yupao-go_internal_domain_user.RegisterParams'
+          $ref: '#/definitions/user.RegisterParams'
       produces:
       - application/json
       responses:
@@ -174,7 +203,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - $ref: '#/definitions/resp.Response'
             - properties:
                 data:
                   format: int64
@@ -183,7 +212,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
       summary: 用户注册
       tags:
       - user
@@ -205,17 +234,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/yupao-go_internal_core.Response'
+            - $ref: '#/definitions/resp.Response'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/yupao-go_internal_domain_user.User'
+                    $ref: '#/definitions/user.User'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
+      security:
+      - SessionAuth: []
       summary: 根据标签搜索用户
       tags:
       - user
@@ -229,23 +260,31 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/yupao-go_internal_domain_user.User'
+          $ref: '#/definitions/user.User'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/yupao-go_internal_core.Response'
+            $ref: '#/definitions/resp.Response'
+      security:
+      - SessionAuth: []
       summary: 更新用户信息
       tags:
       - user
+securityDefinitions:
+  SessionAuth:
+    description: 'Session cookie authentication. Example: session=your-session-id'
+    in: header
+    name: Cookie
+    type: apiKey
 swagger: "2.0"

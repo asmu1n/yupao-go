@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "yupao-go 后端接口文档",
-        "title": "伙伴匹配系统 API",
+        "description": "伙伴匹配系统后端接口文档",
+        "title": "Yupao Go API",
         "contact": {},
         "version": "1.0"
     },
@@ -11,6 +11,11 @@
     "paths": {
         "/user/current": {
             "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -24,13 +29,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/yupao-go_internal_core.Response"
+                                    "$ref": "#/definitions/resp.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/yupao-go_internal_domain_user.User"
+                                            "$ref": "#/definitions/user.User"
                                         }
                                     }
                                 }
@@ -40,7 +45,7 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     }
                 }
@@ -48,6 +53,7 @@
         },
         "/user/login": {
             "post": {
+                "description": "用户登录接口，成功后写入 session cookie",
                 "consumes": [
                     "application/json"
                 ],
@@ -65,7 +71,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_domain_user.LoginParams"
+                            "$ref": "#/definitions/user.LoginParams"
                         }
                     }
                 ],
@@ -75,13 +81,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/yupao-go_internal_core.Response"
+                                    "$ref": "#/definitions/resp.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/yupao-go_internal_domain_user.User"
+                                            "$ref": "#/definitions/user.User"
                                         }
                                     }
                                 }
@@ -91,7 +97,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     }
                 }
@@ -99,6 +105,11 @@
         },
         "/user/logout": {
             "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -110,7 +121,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     }
                 }
@@ -118,6 +129,11 @@
         },
         "/user/match": {
             "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -142,7 +158,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/yupao-go_internal_core.Response"
+                                    "$ref": "#/definitions/resp.Response"
                                 },
                                 {
                                     "type": "object",
@@ -150,7 +166,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/yupao-go_internal_domain_user.User"
+                                                "$ref": "#/definitions/user.User"
                                             }
                                         }
                                     }
@@ -161,7 +177,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     }
                 }
@@ -186,7 +202,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_domain_user.RegisterParams"
+                            "$ref": "#/definitions/user.RegisterParams"
                         }
                     }
                 ],
@@ -196,7 +212,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/yupao-go_internal_core.Response"
+                                    "$ref": "#/definitions/resp.Response"
                                 },
                                 {
                                     "type": "object",
@@ -213,7 +229,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     }
                 }
@@ -221,6 +237,11 @@
         },
         "/user/search/tags": {
             "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -247,7 +268,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/yupao-go_internal_core.Response"
+                                    "$ref": "#/definitions/resp.Response"
                                 },
                                 {
                                     "type": "object",
@@ -255,7 +276,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/yupao-go_internal_domain_user.User"
+                                                "$ref": "#/definitions/user.User"
                                             }
                                         }
                                     }
@@ -266,7 +287,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     }
                 }
@@ -274,6 +295,11 @@
         },
         "/user/update": {
             "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -291,7 +317,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_domain_user.User"
+                            "$ref": "#/definitions/user.User"
                         }
                     }
                 ],
@@ -299,19 +325,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/yupao-go_internal_core.Response"
+                            "$ref": "#/definitions/resp.Response"
                         }
                     }
                 }
@@ -319,50 +345,64 @@
         }
     },
     "definitions": {
-        "yupao-go_internal_core.Response": {
+        "resp.Response": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer"
                 },
                 "data": {},
-                "description": {
-                    "type": "string"
-                },
                 "message": {
                     "type": "string"
                 }
             }
         },
-        "yupao-go_internal_domain_user.LoginParams": {
+        "user.LoginParams": {
             "type": "object",
+            "required": [
+                "userAccount",
+                "userPassword"
+            ],
             "properties": {
                 "userAccount": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 4
                 },
                 "userPassword": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 8
                 }
             }
         },
-        "yupao-go_internal_domain_user.RegisterParams": {
+        "user.RegisterParams": {
             "type": "object",
+            "required": [
+                "checkPassword",
+                "planetCode",
+                "userAccount",
+                "userPassword"
+            ],
             "properties": {
                 "checkPassword": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 8
                 },
                 "planetCode": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 20
                 },
                 "userAccount": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 256,
+                    "minLength": 4
                 },
                 "userPassword": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 8
                 }
             }
         },
-        "yupao-go_internal_domain_user.User": {
+        "user.User": {
             "type": "object",
             "properties": {
                 "avatarUrl": {
@@ -375,7 +415,7 @@
                     "type": "string"
                 },
                 "gender": {
-                    "type": "integer"
+                    "$ref": "#/definitions/usertype.Gender"
                 },
                 "id": {
                     "type": "integer"
@@ -402,6 +442,26 @@
                     "type": "string"
                 }
             }
+        },
+        "usertype.Gender": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "GenderMale",
+                "GenderFemale"
+            ]
+        }
+    },
+    "securityDefinitions": {
+        "SessionAuth": {
+            "description": "Session cookie authentication. Example: session=your-session-id",
+            "type": "apiKey",
+            "name": "Cookie",
+            "in": "header"
         }
     }
 }

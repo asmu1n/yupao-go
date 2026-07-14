@@ -37,14 +37,14 @@ func (u *User) ParseTags() []string {
 	return tags
 }
 
-type registerParams struct {
+type RegisterParams struct {
 	UserAccount   string `json:"userAccount"   binding:"required,min=4,max=256"`
 	UserPassword  string `json:"userPassword"  binding:"required,min=8"`
 	CheckPassword string `json:"checkPassword" binding:"required,min=8,eqfield=UserPassword"`
 	PlanetCode    string `json:"planetCode"    binding:"required,max=20"`
 }
 
-type loginParams struct {
+type LoginParams struct {
 	UserAccount  string `json:"userAccount"  binding:"required,min=4"`
 	UserPassword string `json:"userPassword" binding:"required,min=8"`
 }
