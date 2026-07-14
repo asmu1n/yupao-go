@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"yupao-go/ent/user"
+	"yupao-go/internal/shared/usertype"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -40,14 +41,6 @@ func (_c *UserCreate) SetUserAccount(v string) *UserCreate {
 	return _c
 }
 
-// SetNillableUserAccount sets the "user_account" field if the given value is not nil.
-func (_c *UserCreate) SetNillableUserAccount(v *string) *UserCreate {
-	if v != nil {
-		_c.SetUserAccount(*v)
-	}
-	return _c
-}
-
 // SetAvatarURL sets the "avatar_url" field.
 func (_c *UserCreate) SetAvatarURL(v string) *UserCreate {
 	_c.mutation.SetAvatarURL(v)
@@ -63,13 +56,13 @@ func (_c *UserCreate) SetNillableAvatarURL(v *string) *UserCreate {
 }
 
 // SetGender sets the "gender" field.
-func (_c *UserCreate) SetGender(v int8) *UserCreate {
+func (_c *UserCreate) SetGender(v usertype.Gender) *UserCreate {
 	_c.mutation.SetGender(v)
 	return _c
 }
 
 // SetNillableGender sets the "gender" field if the given value is not nil.
-func (_c *UserCreate) SetNillableGender(v *int8) *UserCreate {
+func (_c *UserCreate) SetNillableGender(v *usertype.Gender) *UserCreate {
 	if v != nil {
 		_c.SetGender(*v)
 	}
@@ -186,14 +179,6 @@ func (_c *UserCreate) SetPlanetCode(v string) *UserCreate {
 	return _c
 }
 
-// SetNillablePlanetCode sets the "planet_code" field if the given value is not nil.
-func (_c *UserCreate) SetNillablePlanetCode(v *string) *UserCreate {
-	if v != nil {
-		_c.SetPlanetCode(*v)
-	}
-	return _c
-}
-
 // SetTags sets the "tags" field.
 func (_c *UserCreate) SetTags(v string) *UserCreate {
 	_c.mutation.SetTags(v)
@@ -278,6 +263,9 @@ func (_c *UserCreate) check() error {
 			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.UserAccount(); !ok {
+		return &ValidationError{Name: "user_account", err: errors.New(`ent: missing required field "User.user_account"`)}
+	}
 	if v, ok := _c.mutation.UserAccount(); ok {
 		if err := user.UserAccountValidator(v); err != nil {
 			return &ValidationError{Name: "user_account", err: fmt.Errorf(`ent: validator failed for field "User.user_account": %w`, err)}
@@ -286,6 +274,11 @@ func (_c *UserCreate) check() error {
 	if v, ok := _c.mutation.AvatarURL(); ok {
 		if err := user.AvatarURLValidator(v); err != nil {
 			return &ValidationError{Name: "avatar_url", err: fmt.Errorf(`ent: validator failed for field "User.avatar_url": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.Gender(); ok {
+		if err := user.GenderValidator(int8(v)); err != nil {
+			return &ValidationError{Name: "gender", err: fmt.Errorf(`ent: validator failed for field "User.gender": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.UserPassword(); !ok {
@@ -320,6 +313,9 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.UserRole(); !ok {
 		return &ValidationError{Name: "user_role", err: errors.New(`ent: missing required field "User.user_role"`)}
+	}
+	if _, ok := _c.mutation.PlanetCode(); !ok {
+		return &ValidationError{Name: "planet_code", err: errors.New(`ent: missing required field "User.planet_code"`)}
 	}
 	if v, ok := _c.mutation.PlanetCode(); ok {
 		if err := user.PlanetCodeValidator(v); err != nil {
@@ -370,7 +366,7 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := _c.mutation.Username(); ok {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
-		_node.Username = value
+		_node.Username = &value
 	}
 	if value, ok := _c.mutation.UserAccount(); ok {
 		_spec.SetField(user.FieldUserAccount, field.TypeString, value)
@@ -378,11 +374,11 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := _c.mutation.AvatarURL(); ok {
 		_spec.SetField(user.FieldAvatarURL, field.TypeString, value)
-		_node.AvatarURL = value
+		_node.AvatarURL = &value
 	}
 	if value, ok := _c.mutation.Gender(); ok {
 		_spec.SetField(user.FieldGender, field.TypeInt8, value)
-		_node.Gender = value
+		_node.Gender = &value
 	}
 	if value, ok := _c.mutation.UserPassword(); ok {
 		_spec.SetField(user.FieldUserPassword, field.TypeString, value)
@@ -390,11 +386,11 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := _c.mutation.Phone(); ok {
 		_spec.SetField(user.FieldPhone, field.TypeString, value)
-		_node.Phone = value
+		_node.Phone = &value
 	}
 	if value, ok := _c.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
-		_node.Email = value
+		_node.Email = &value
 	}
 	if value, ok := _c.mutation.UserStatus(); ok {
 		_spec.SetField(user.FieldUserStatus, field.TypeInt, value)

@@ -1,11 +1,10 @@
-package handler
+package user
 
 import (
 	"strconv"
 
-	"yupao-go/internal/core"
-	"yupao-go/internal/domain/user"
 	"yupao-go/internal/middleware"
+	"yupao-go/internal/shared/resp"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -14,10 +13,10 @@ import (
 const sessionKeyUserID = middleware.SessionKeyUserID
 
 type UserHandler struct {
-	svc *user.Service
+	svc *Service
 }
 
-func NewUserHandler(svc *user.Service) *UserHandler {
+func NewUserHandler(svc *Service) *UserHandler {
 	return &UserHandler{svc: svc}
 }
 
@@ -27,21 +26,21 @@ func NewUserHandler(svc *user.Service) *UserHandler {
 // @Accept   json
 // @Produce  json
 // @Param    body body     user.RegisterParams true "注册参数"
-// @Success  200  {object} core.Response{data=int64}
-// @Failure  400  {object} core.Response
+// @Success  200  {object} resp.Response{data=int64}
+// @Failure  400  {object} resp.Response
 // @Router   /user/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
-	var params user.RegisterParams
+	var params registerParams
 	if err := c.ShouldBindJSON(&params); err != nil {
-		core.RespondBindingError(c, err)
+		resp.RespondBindingError(c, err)
 		return
 	}
 	id, err := h.svc.Register(c.Request.Context(), params)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
-	core.RespondOK(c, id)
+	resp.RespondOK(c, id)
 }
 
 // Login
@@ -50,58 +49,58 @@ func (h *UserHandler) Register(c *gin.Context) {
 // @Accept   json
 // @Produce  json
 // @Param    body body     user.LoginParams true "登录参数"
-// @Success  200  {object} core.Response{data=user.User}
-// @Failure  400  {object} core.Response
+// @Success  200  {object} resp.Response{data=user.User}
+// @Failure  400  {object} resp.Response
 // @Router   /user/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
-	var params user.LoginParams
+	var params loginParams
 	if err := c.ShouldBindJSON(&params); err != nil {
-		core.RespondBindingError(c, err)
+		resp.RespondBindingError(c, err)
 		return
 	}
 	u, err := h.svc.Login(c.Request.Context(), params.UserAccount, params.UserPassword)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
 	session := sessions.Default(c)
 	session.Set(sessionKeyUserID, u.ID)
 	session.Save()
-	core.RespondOK(c, u)
+	resp.RespondOK(c, u)
 }
 
 // Logout
 // @Summary  用户注销
 // @Tags     user
 // @Produce  json
-// @Success  200 {object} core.Response
+// @Success  200 {object} resp.Response
 // @Router   /user/logout [post]
 func (h *UserHandler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	session.Save()
-	core.RespondOK(c, nil)
+	resp.RespondOK(c, nil)
 }
 
 // CurrentUser
 // @Summary  获取当前登录用户
 // @Tags     user
 // @Produce  json
-// @Success  200 {object} core.Response{data=user.User}
-// @Failure  401 {object} core.Response
+// @Success  200 {object} resp.Response{data=user.User}
+// @Failure  401 {object} resp.Response
 // @Router   /user/current [get]
 func (h *UserHandler) CurrentUser(c *gin.Context) {
 	uid, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
 	fresh, err := h.svc.GetByID(c.Request.Context(), uid)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
-	core.RespondOK(c, fresh)
+	resp.RespondOK(c, fresh)
 }
 
 // SearchByTags
@@ -109,17 +108,17 @@ func (h *UserHandler) CurrentUser(c *gin.Context) {
 // @Tags     user
 // @Produce  json
 // @Param    tagNameList query    []string true "标签列表"
-// @Success  200         {object} core.Response{data=[]user.User}
-// @Failure  400         {object} core.Response
+// @Success  200         {object} resp.Response{data=[]user.User}
+// @Failure  400         {object} resp.Response
 // @Router   /user/search/tags [get]
 func (h *UserHandler) SearchByTags(c *gin.Context) {
 	tags := c.QueryArray("tagNameList")
 	users, err := h.svc.SearchByTags(c.Request.Context(), tags)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
-	core.RespondOK(c, users)
+	resp.RespondOK(c, users)
 }
 
 // Update
@@ -128,27 +127,27 @@ func (h *UserHandler) SearchByTags(c *gin.Context) {
 // @Accept   json
 // @Produce  json
 // @Param    body body     user.User true "用户信息"
-// @Success  200  {object} core.Response
-// @Failure  400  {object} core.Response
-// @Failure  403  {object} core.Response
+// @Success  200  {object} resp.Response
+// @Failure  400  {object} resp.Response
+// @Failure  403  {object} resp.Response
 // @Router   /user/update [post]
 func (h *UserHandler) Update(c *gin.Context) {
 	loginUserID, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
-	var target user.User
+	var target User
 	if err := c.ShouldBindJSON(&target); err != nil {
-		core.RespondBindingError(c, err)
+		resp.RespondBindingError(c, err)
 		return
 	}
 	err = h.svc.Update(c.Request.Context(), target.ID, &target, loginUserID)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
-	core.RespondOK(c, nil)
+	resp.RespondOK(c, nil)
 }
 
 // MatchUsers
@@ -156,32 +155,30 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Tags     user
 // @Produce  json
 // @Param    num query    int true "推荐数量" minimum(1) maximum(20)
-// @Success  200 {object} core.Response{data=[]user.User}
-// @Failure  400 {object} core.Response
+// @Success  200 {object} resp.Response{data=[]user.User}
+// @Failure  400 {object} resp.Response
 // @Router   /user/match [get]
 func (h *UserHandler) MatchUsers(c *gin.Context) {
 	numStr := c.Query("num")
 	num, err := strconv.Atoi(numStr)
 	if err != nil || num <= 0 || num > 20 {
-		core.RespondError(c, core.NewBizErrorWithDetail(core.ParamsError, "num 需在 1-20 之间"))
+		resp.RespondError(c, resp.NewBizErrorWithDetail(resp.ParamsError, "num 需在 1-20 之间"))
 		return
 	}
 	loginUserID, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
 	loginUser, err := h.svc.GetByID(c.Request.Context(), loginUserID)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
 	users, err := h.svc.MatchUsers(c.Request.Context(), num, loginUser)
 	if err != nil {
-		core.RespondError(c, err)
+		resp.RespondError(c, err)
 		return
 	}
-	core.RespondOK(c, users)
+	resp.RespondOK(c, users)
 }
-
-

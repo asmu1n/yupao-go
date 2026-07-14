@@ -1,4 +1,4 @@
-package repo
+package repository
 
 import (
 	"context"
@@ -6,26 +6,27 @@ import (
 	"yupao-go/ent"
 	entuser "yupao-go/ent/user"
 	"yupao-go/internal/domain/user"
+	"yupao-go/internal/shared/usertype"
 )
 
-type UserRepository struct {
+type EntRepository struct {
 	client *ent.Client
 }
 
-func New(client *ent.Client) *UserRepository {
-	return &UserRepository{client: client}
+func New(client *ent.Client) *EntRepository {
+	return &EntRepository{client: client}
 }
 
-func (r *UserRepository) Create(ctx context.Context, u *user.User) (int64, error) {
+func (r *EntRepository) Create(ctx context.Context, u *user.User) (int64, error) {
 	created, err := r.client.User.Create().
+		SetUserAccount(u.UserAccount).
+		SetPlanetCode(u.PlanetCode).
+		SetUserPassword(u.Password).
 		SetNillableUsername(u.Username).
-		SetNillableUserAccount(u.UserAccount).
 		SetNillableAvatarURL(u.AvatarURL).
 		SetNillableGender(u.Gender).
-		SetUserPassword(u.Password).
 		SetNillablePhone(u.Phone).
 		SetNillableEmail(u.Email).
-		SetNillablePlanetCode(u.PlanetCode).
 		SetNillableTags(u.Tags).
 		Save(ctx)
 	if err != nil {
@@ -34,7 +35,7 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) (int64, error
 	return created.ID, nil
 }
 
-func (r *UserRepository) GetByID(ctx context.Context, id int64) (*user.User, error) {
+func (r *EntRepository) GetByID(ctx context.Context, id int64) (*user.User, error) {
 	row, err := r.client.User.Query().
 		Where(entuser.IDEQ(id)).
 		Only(ctx)
@@ -47,7 +48,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*user.User, err
 	return toDomain(row), nil
 }
 
-func (r *UserRepository) GetByAccount(ctx context.Context, account string) (*user.User, error) {
+func (r *EntRepository) GetByAccount(ctx context.Context, account string) (*user.User, error) {
 	row, err := r.client.User.Query().
 		Where(entuser.UserAccountEQ(account)).
 		Only(ctx)
@@ -60,33 +61,33 @@ func (r *UserRepository) GetByAccount(ctx context.Context, account string) (*use
 	return toDomain(row), nil
 }
 
-func (r *UserRepository) ExistsByAccount(ctx context.Context, account string) (bool, error) {
+func (r *EntRepository) ExistsByAccount(ctx context.Context, account string) (bool, error) {
 	return r.client.User.Query().
 		Where(entuser.UserAccountEQ(account)).
 		Exist(ctx)
 }
 
-func (r *UserRepository) ExistsByPlanetCode(ctx context.Context, code string) (bool, error) {
+func (r *EntRepository) ExistsByPlanetCode(ctx context.Context, code string) (bool, error) {
 	return r.client.User.Query().
 		Where(entuser.PlanetCodeEQ(code)).
 		Exist(ctx)
 }
 
-func (r *UserRepository) Update(ctx context.Context, id int64, u *user.User) error {
+func (r *EntRepository) Update(ctx context.Context, id int64, u *user.User) error {
 	_, err := r.client.User.UpdateOneID(id).
+		SetUserAccount(u.UserAccount).
+		SetPlanetCode(u.PlanetCode).
 		SetNillableUsername(u.Username).
-		SetNillableUserAccount(u.UserAccount).
 		SetNillableAvatarURL(u.AvatarURL).
 		SetNillableGender(u.Gender).
 		SetNillablePhone(u.Phone).
 		SetNillableEmail(u.Email).
-		SetNillablePlanetCode(u.PlanetCode).
 		SetNillableTags(u.Tags).
 		Save(ctx)
 	return err
 }
 
-func (r *UserRepository) ListAll(ctx context.Context) ([]*user.User, error) {
+func (r *EntRepository) ListAll(ctx context.Context) ([]*user.User, error) {
 	rows, err := r.client.User.Query().All(ctx)
 	if err != nil {
 		return nil, err
@@ -94,7 +95,7 @@ func (r *UserRepository) ListAll(ctx context.Context) ([]*user.User, error) {
 	return toDomainList(rows), nil
 }
 
-func (r *UserRepository) ListByIDs(ctx context.Context, ids []int64) ([]*user.User, error) {
+func (r *EntRepository) ListByIDs(ctx context.Context, ids []int64) ([]*user.User, error) {
 	rows, err := r.client.User.Query().
 		Where(entuser.IDIn(ids...)).
 		All(ctx)
@@ -106,32 +107,32 @@ func (r *UserRepository) ListByIDs(ctx context.Context, ids []int64) ([]*user.Us
 
 func toDomain(e *ent.User) *user.User {
 	u := &user.User{
-		ID:         e.ID,
-		Password:   e.UserPassword,
-		UserStatus: e.UserStatus,
-		UserRole:   e.UserRole,
-		CreateTime: e.CreateTime,
+		ID:          e.ID,
+		UserAccount: e.UserAccount,
+		Password:    e.UserPassword,
+		UserStatus:  e.UserStatus,
+		UserRole:    e.UserRole,
+		CreateTime:  e.CreateTime,
 	}
-	if e.Username != "" {
-		u.Username = &e.Username
+	if e.Username != nil {
+		u.Username = e.Username
 	}
-	if e.UserAccount != "" {
-		u.UserAccount = &e.UserAccount
+
+	if e.AvatarURL != nil {
+		u.AvatarURL = e.AvatarURL
 	}
-	if e.AvatarURL != "" {
-		u.AvatarURL = &e.AvatarURL
+	if e.Gender != nil {
+		gender := usertype.Gender(*e.Gender)
+		u.Gender = &gender
 	}
-	if e.Gender != 0 {
-		u.Gender = &e.Gender
+	if e.Phone != nil {
+		u.Phone = e.Phone
 	}
-	if e.Phone != "" {
-		u.Phone = &e.Phone
-	}
-	if e.Email != "" {
-		u.Email = &e.Email
+	if e.Email != nil {
+		u.Email = e.Email
 	}
 	if e.PlanetCode != "" {
-		u.PlanetCode = &e.PlanetCode
+		u.PlanetCode = e.PlanetCode
 	}
 	if e.Tags != "" {
 		u.Tags = &e.Tags

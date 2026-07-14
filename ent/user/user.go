@@ -81,6 +81,8 @@ var (
 	UserAccountValidator func(string) error
 	// AvatarURLValidator is a validator for the "avatar_url" field. It is called by the builders before save.
 	AvatarURLValidator func(string) error
+	// GenderValidator is a validator for the "gender" field. It is called by the builders before save.
+	GenderValidator func(int8) error
 	// UserPasswordValidator is a validator for the "user_password" field. It is called by the builders before save.
 	UserPasswordValidator func(string) error
 	// PhoneValidator is a validator for the "phone" field. It is called by the builders before save.

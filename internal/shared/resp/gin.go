@@ -1,10 +1,12 @@
-package core
+package resp
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+// 基于 error 和 response 结构，捕获其中的 HTTP 状态码和响应结果（成功/失败），由 gin 序列化响应信息
 
 func RespondOK(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, OK(data))

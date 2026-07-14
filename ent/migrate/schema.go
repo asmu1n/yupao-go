@@ -13,7 +13,7 @@ var (
 	UserColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "username", Type: field.TypeString, Nullable: true, Size: 256},
-		{Name: "user_account", Type: field.TypeString, Unique: true, Nullable: true, Size: 256},
+		{Name: "user_account", Type: field.TypeString, Unique: true, Size: 256},
 		{Name: "avatar_url", Type: field.TypeString, Nullable: true, Size: 1024},
 		{Name: "gender", Type: field.TypeInt8, Nullable: true},
 		{Name: "user_password", Type: field.TypeString, Size: 512},
@@ -24,7 +24,7 @@ var (
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "is_delete", Type: field.TypeInt8, Default: 0},
 		{Name: "user_role", Type: field.TypeInt, Default: 0},
-		{Name: "planet_code", Type: field.TypeString, Nullable: true, Size: 512},
+		{Name: "planet_code", Type: field.TypeString, Size: 512},
 		{Name: "tags", Type: field.TypeString, Nullable: true, Size: 1024},
 	}
 	// UserTable holds the schema information for the "user" table.

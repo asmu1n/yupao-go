@@ -3,6 +3,8 @@ package user
 import (
 	"encoding/json"
 	"time"
+
+	"yupao-go/internal/shared/usertype"
 )
 
 const (
@@ -11,19 +13,19 @@ const (
 )
 
 type User struct {
-	ID          int64     `json:"id"`
-	Username    *string   `json:"username"`
-	UserAccount *string   `json:"userAccount"`
-	AvatarURL   *string   `json:"avatarUrl"`
-	Gender      *int8     `json:"gender"`
-	Password    string    `json:"-"`
-	Phone       *string   `json:"phone"`
-	Email       *string   `json:"email"`
-	UserStatus  int       `json:"userStatus"`
-	UserRole    int       `json:"userRole"`
-	PlanetCode  *string   `json:"planetCode"`
-	Tags        *string   `json:"tags"`
-	CreateTime  time.Time `json:"createTime"`
+	ID          int64            `json:"id"`
+	UserAccount string           `json:"userAccount"`
+	Password    string           `json:"-"`
+	Username    *string          `json:"username"`
+	AvatarURL   *string          `json:"avatarUrl"`
+	Gender      *usertype.Gender `json:"gender"`
+	Phone       *string          `json:"phone"`
+	Email       *string          `json:"email"`
+	PlanetCode  string           `json:"planetCode"`
+	Tags        *string          `json:"tags"`
+	UserStatus  int              `json:"userStatus"`
+	UserRole    int              `json:"userRole"`
+	CreateTime  time.Time        `json:"createTime"`
 }
 
 func (u *User) ParseTags() []string {
@@ -35,14 +37,14 @@ func (u *User) ParseTags() []string {
 	return tags
 }
 
-type RegisterParams struct {
+type registerParams struct {
 	UserAccount   string `json:"userAccount"   binding:"required,min=4,max=256"`
 	UserPassword  string `json:"userPassword"  binding:"required,min=8"`
 	CheckPassword string `json:"checkPassword" binding:"required,min=8,eqfield=UserPassword"`
 	PlanetCode    string `json:"planetCode"    binding:"required,max=5"`
 }
 
-type LoginParams struct {
+type loginParams struct {
 	UserAccount  string `json:"userAccount"  binding:"required,min=4"`
 	UserPassword string `json:"userPassword" binding:"required,min=8"`
 }

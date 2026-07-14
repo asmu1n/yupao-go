@@ -1,4 +1,4 @@
-package core
+package page
 
 const (
 	defaultPageSize = 10

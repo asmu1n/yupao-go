@@ -26,6 +26,10 @@ func init() {
 	userDescAvatarURL := userFields[3].Descriptor()
 	// user.AvatarURLValidator is a validator for the "avatar_url" field. It is called by the builders before save.
 	user.AvatarURLValidator = userDescAvatarURL.Validators[0].(func(string) error)
+	// userDescGender is the schema descriptor for gender field.
+	userDescGender := userFields[4].Descriptor()
+	// user.GenderValidator is a validator for the "gender" field. It is called by the builders before save.
+	user.GenderValidator = userDescGender.Validators[0].(func(int8) error)
 	// userDescUserPassword is the schema descriptor for user_password field.
 	userDescUserPassword := userFields[5].Descriptor()
 	// user.UserPasswordValidator is a validator for the "user_password" field. It is called by the builders before save.

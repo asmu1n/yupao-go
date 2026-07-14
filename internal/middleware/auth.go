@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"yupao-go/internal/core"
+	"yupao-go/internal/shared/resp"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,7 @@ func AuthRequired() gin.HandlerFunc {
 		session := sessions.Default(c)
 		uid := session.Get(SessionKeyUserID)
 		if uid == nil {
-			c.JSON(http.StatusUnauthorized, core.FailWithCode(core.NotLogin, ""))
+			c.JSON(http.StatusUnauthorized, resp.FailWithCode(resp.NotLogin, ""))
 			c.Abort()
 			return
 		}
@@ -28,11 +28,11 @@ func AuthRequired() gin.HandlerFunc {
 func GetLoginUserID(c *gin.Context) (int64, error) {
 	uid, exists := c.Get(SessionKeyUserID)
 	if !exists {
-		return 0, core.NewBizError(core.NotLogin)
+		return 0, resp.NewBizError(resp.NotLogin)
 	}
 	id, ok := uid.(int64)
 	if !ok {
-		return 0, core.NewBizError(core.NotLogin)
+		return 0, resp.NewBizError(resp.NotLogin)
 	}
 	return id, nil
 }

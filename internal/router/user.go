@@ -3,17 +3,16 @@ package router
 import (
 	"yupao-go/ent"
 	"yupao-go/internal/domain/user"
-	userHandler "yupao-go/internal/domain/user/handler"
-	userRepo "yupao-go/internal/domain/user/repo"
+	repository "yupao-go/internal/domain/user/repository"
 	"yupao-go/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 func registerUser(api *gin.RouterGroup, client *ent.Client) {
-	repo := userRepo.New(client)
+	repo := repository.New(client)
 	svc := user.NewService(repo)
-	h := userHandler.NewUserHandler(svc)
+	h := user.NewUserHandler(svc)
 
 	u := api.Group("/user")
 	{

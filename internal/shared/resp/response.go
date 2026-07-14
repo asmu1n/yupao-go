@@ -1,12 +1,11 @@
-package core
+package resp
 
 import "errors"
 
 type Response struct {
-	Code        int    `json:"code"`
-	Data        any    `json:"data"`
-	Message     string `json:"message"`
-	Description string `json:"description,omitempty"`
+	Code    int    `json:"code"`
+	Data    any    `json:"data"`
+	Message string `json:"message"`
 }
 
 func OK(data any) *Response {
@@ -17,6 +16,7 @@ func OK(data any) *Response {
 	}
 }
 
+// 用于处理未知的错误，如果识别为业务错误，则使用业务错误码，否则统一用系统错误码隐蔽内部细节
 func Fail(err error) *Response {
 	var bizErr *BizError
 	if errors.As(err, &bizErr) {
@@ -31,6 +31,7 @@ func Fail(err error) *Response {
 	}
 }
 
+// 用于指定已知的业务错误码以及相关的错误信息
 func FailWithCode(code Code, detail string) *Response {
 	msg := code.Message
 	if detail != "" {
@@ -42,6 +43,7 @@ func FailWithCode(code Code, detail string) *Response {
 	}
 }
 
+// 用于从错误中获取HTTP状态码,同样也是尝试识别业务错误并使用其对应的 HTTP状态码，其他情况一律用系统错误 HTTP状态码
 func HTTPCodeFromErr(err error) int {
 	var bizErr *BizError
 	if errors.As(err, &bizErr) {

@@ -3,12 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 
 	"yupao-go/ent"
+	"yupao-go/internal/config"
 
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -29,32 +28,29 @@ func (c *Config) DSN() string {
 		c.Host, c.Port, c.Username, c.Password, c.DBName)
 }
 
-func LoadConfig() (*Config, error) {
-	_ = godotenv.Load()
+func loadConfig() (*Config, error) {
+	config.LoadEnv()
 
-	port, err := strconv.Atoi(getEnv("POSTGRES_PORT", "5432"))
+	port, err := strconv.Atoi(config.GetEnv("POSTGRES_PORT", "5432"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid POSTGRES_PORT: %w", err)
 	}
 
 	return &Config{
-		Host:     getEnv("DB_HOST", "localhost"),
+		Host:     config.GetEnv("DB_HOST", "localhost"),
 		Port:     port,
-		Username: getEnv("POSTGRES_USER", "root"),
-		Password: getEnv("POSTGRES_PASSWORD", "root"),
-		DBName:   getEnv("POSTGRES_DB", "yupao_db"),
+		Username: config.GetEnv("POSTGRES_USER", "root"),
+		Password: config.GetEnv("POSTGRES_PASSWORD", "root"),
+		DBName:   config.GetEnv("POSTGRES_DB", "yupao_db"),
 	}, nil
 }
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func New() (*DB, error) {
+	cfg, err := loadConfig()
+	if err != nil {
+		return nil, err
 	}
-	return fallback
-}
-
-func New(config *Config) (*DB, error) {
-	client, err := ent.Open("postgres", config.DSN())
+	client, err := ent.Open("postgres", cfg.DSN())
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}

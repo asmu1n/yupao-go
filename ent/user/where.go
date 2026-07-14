@@ -5,6 +5,7 @@ package user
 import (
 	"time"
 	"yupao-go/ent/predicate"
+	"yupao-go/internal/shared/usertype"
 
 	"entgo.io/ent/dialect/sql"
 )
@@ -70,8 +71,9 @@ func AvatarURL(v string) predicate.User {
 }
 
 // Gender applies equality check predicate on the "gender" field. It's identical to GenderEQ.
-func Gender(v int8) predicate.User {
-	return predicate.User(sql.FieldEQ(FieldGender, v))
+func Gender(v usertype.Gender) predicate.User {
+	vc := int8(v)
+	return predicate.User(sql.FieldEQ(FieldGender, vc))
 }
 
 // UserPassword applies equality check predicate on the "user_password" field. It's identical to UserPasswordEQ.
@@ -254,16 +256,6 @@ func UserAccountHasSuffix(v string) predicate.User {
 	return predicate.User(sql.FieldHasSuffix(FieldUserAccount, v))
 }
 
-// UserAccountIsNil applies the IsNil predicate on the "user_account" field.
-func UserAccountIsNil() predicate.User {
-	return predicate.User(sql.FieldIsNull(FieldUserAccount))
-}
-
-// UserAccountNotNil applies the NotNil predicate on the "user_account" field.
-func UserAccountNotNil() predicate.User {
-	return predicate.User(sql.FieldNotNull(FieldUserAccount))
-}
-
 // UserAccountEqualFold applies the EqualFold predicate on the "user_account" field.
 func UserAccountEqualFold(v string) predicate.User {
 	return predicate.User(sql.FieldEqualFold(FieldUserAccount, v))
@@ -350,43 +342,57 @@ func AvatarURLContainsFold(v string) predicate.User {
 }
 
 // GenderEQ applies the EQ predicate on the "gender" field.
-func GenderEQ(v int8) predicate.User {
-	return predicate.User(sql.FieldEQ(FieldGender, v))
+func GenderEQ(v usertype.Gender) predicate.User {
+	vc := int8(v)
+	return predicate.User(sql.FieldEQ(FieldGender, vc))
 }
 
 // GenderNEQ applies the NEQ predicate on the "gender" field.
-func GenderNEQ(v int8) predicate.User {
-	return predicate.User(sql.FieldNEQ(FieldGender, v))
+func GenderNEQ(v usertype.Gender) predicate.User {
+	vc := int8(v)
+	return predicate.User(sql.FieldNEQ(FieldGender, vc))
 }
 
 // GenderIn applies the In predicate on the "gender" field.
-func GenderIn(vs ...int8) predicate.User {
-	return predicate.User(sql.FieldIn(FieldGender, vs...))
+func GenderIn(vs ...usertype.Gender) predicate.User {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = int8(vs[i])
+	}
+	return predicate.User(sql.FieldIn(FieldGender, v...))
 }
 
 // GenderNotIn applies the NotIn predicate on the "gender" field.
-func GenderNotIn(vs ...int8) predicate.User {
-	return predicate.User(sql.FieldNotIn(FieldGender, vs...))
+func GenderNotIn(vs ...usertype.Gender) predicate.User {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = int8(vs[i])
+	}
+	return predicate.User(sql.FieldNotIn(FieldGender, v...))
 }
 
 // GenderGT applies the GT predicate on the "gender" field.
-func GenderGT(v int8) predicate.User {
-	return predicate.User(sql.FieldGT(FieldGender, v))
+func GenderGT(v usertype.Gender) predicate.User {
+	vc := int8(v)
+	return predicate.User(sql.FieldGT(FieldGender, vc))
 }
 
 // GenderGTE applies the GTE predicate on the "gender" field.
-func GenderGTE(v int8) predicate.User {
-	return predicate.User(sql.FieldGTE(FieldGender, v))
+func GenderGTE(v usertype.Gender) predicate.User {
+	vc := int8(v)
+	return predicate.User(sql.FieldGTE(FieldGender, vc))
 }
 
 // GenderLT applies the LT predicate on the "gender" field.
-func GenderLT(v int8) predicate.User {
-	return predicate.User(sql.FieldLT(FieldGender, v))
+func GenderLT(v usertype.Gender) predicate.User {
+	vc := int8(v)
+	return predicate.User(sql.FieldLT(FieldGender, vc))
 }
 
 // GenderLTE applies the LTE predicate on the "gender" field.
-func GenderLTE(v int8) predicate.User {
-	return predicate.User(sql.FieldLTE(FieldGender, v))
+func GenderLTE(v usertype.Gender) predicate.User {
+	vc := int8(v)
+	return predicate.User(sql.FieldLTE(FieldGender, vc))
 }
 
 // GenderIsNil applies the IsNil predicate on the "gender" field.
@@ -867,16 +873,6 @@ func PlanetCodeHasPrefix(v string) predicate.User {
 // PlanetCodeHasSuffix applies the HasSuffix predicate on the "planet_code" field.
 func PlanetCodeHasSuffix(v string) predicate.User {
 	return predicate.User(sql.FieldHasSuffix(FieldPlanetCode, v))
-}
-
-// PlanetCodeIsNil applies the IsNil predicate on the "planet_code" field.
-func PlanetCodeIsNil() predicate.User {
-	return predicate.User(sql.FieldIsNull(FieldPlanetCode))
-}
-
-// PlanetCodeNotNil applies the NotNil predicate on the "planet_code" field.
-func PlanetCodeNotNil() predicate.User {
-	return predicate.User(sql.FieldNotNull(FieldPlanetCode))
 }
 
 // PlanetCodeEqualFold applies the EqualFold predicate on the "planet_code" field.

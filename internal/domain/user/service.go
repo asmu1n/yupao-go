@@ -7,8 +7,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"yupao-go/internal/core"
-	"yupao-go/internal/pkg/algo"
+	"yupao-go/internal/algo"
+	"yupao-go/internal/shared/resp"
 )
 
 var validAccountPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -22,9 +22,9 @@ func NewService(repo Repository) *Service {
 }
 
 // Register 用户注册，校验参数 + 查重 + bcrypt 加密后入库，返回新用户 ID
-func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error) {
+func (s *Service) Register(ctx context.Context, p registerParams) (int64, error) {
 	if !validAccountPattern.MatchString(p.UserAccount) {
-		return 0, core.NewBizErrorWithDetail(core.ParamsError, "账号包含特殊字符")
+		return 0, resp.NewBizErrorWithDetail(resp.ParamsError, "账号包含特殊字符")
 	}
 
 	exists, err := s.repo.ExistsByAccount(ctx, p.UserAccount)
@@ -32,7 +32,7 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 		return 0, err
 	}
 	if exists {
-		return 0, core.NewBizErrorWithDetail(core.ParamsError, "账号重复")
+		return 0, resp.NewBizErrorWithDetail(resp.ParamsError, "账号重复")
 	}
 
 	exists, err = s.repo.ExistsByPlanetCode(ctx, p.PlanetCode)
@@ -40,18 +40,18 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 		return 0, err
 	}
 	if exists {
-		return 0, core.NewBizErrorWithDetail(core.ParamsError, "编号重复")
+		return 0, resp.NewBizErrorWithDetail(resp.ParamsError, "编号重复")
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(p.UserPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return 0, core.NewBizErrorWithDetail(core.SystemError, "密码加密失败")
+		return 0, resp.NewBizErrorWithDetail(resp.SystemError, "密码加密失败")
 	}
 
 	u := &User{
-		UserAccount: &p.UserAccount,
+		UserAccount: p.UserAccount,
 		Password:    string(hashed),
-		PlanetCode:  &p.PlanetCode,
+		PlanetCode:  p.PlanetCode,
 	}
 	return s.repo.Create(ctx, u)
 }
@@ -59,7 +59,7 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 // Login 用户登录，校验账号密码后返回脱敏用户信息
 func (s *Service) Login(ctx context.Context, account, password string) (*User, error) {
 	if !validAccountPattern.MatchString(account) {
-		return nil, core.NewBizErrorWithDetail(core.ParamsError, "账号包含特殊字符")
+		return nil, resp.NewBizErrorWithDetail(resp.ParamsError, "账号包含特殊字符")
 	}
 
 	u, err := s.repo.GetByAccount(ctx, account)
@@ -67,11 +67,11 @@ func (s *Service) Login(ctx context.Context, account, password string) (*User, e
 		return nil, err
 	}
 	if u == nil {
-		return nil, core.NewBizErrorWithDetail(core.ParamsError, "账号或密码错误")
+		return nil, resp.NewBizErrorWithDetail(resp.ParamsError, "账号或密码错误")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)); err != nil {
-		return nil, core.NewBizErrorWithDetail(core.ParamsError, "账号或密码错误")
+		return nil, resp.NewBizErrorWithDetail(resp.ParamsError, "账号或密码错误")
 	}
 
 	u.Password = ""
@@ -85,7 +85,7 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
 		return nil, err
 	}
 	if u == nil {
-		return nil, core.NewBizError(core.NotFound)
+		return nil, resp.NewBizError(resp.NotFound)
 	}
 	u.Password = ""
 	return u, nil
@@ -98,15 +98,15 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 		return err
 	}
 	if caller == nil {
-		return core.NewBizError(core.NotFound)
+		return resp.NewBizError(resp.NotFound)
 	}
 	isAdmin := s.isAdmin(caller)
 
 	if targetID <= 0 {
-		return core.NewBizError(core.ParamsError)
+		return resp.NewBizError(resp.ParamsError)
 	}
 	if !isAdmin && targetID != callerID {
-		return core.NewBizError(core.NoAuth)
+		return resp.NewBizError(resp.NoAuth)
 	}
 
 	old, err := s.repo.GetByID(ctx, targetID)
@@ -114,7 +114,7 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 		return err
 	}
 	if old == nil {
-		return core.NewBizError(core.NotFound)
+		return resp.NewBizError(resp.NotFound)
 	}
 
 	return s.repo.Update(ctx, targetID, u)
@@ -123,7 +123,7 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 // SearchByTags 根据标签列表搜索用户，内存过滤匹配所有标签的用户
 func (s *Service) SearchByTags(ctx context.Context, tagNames []string) ([]*User, error) {
 	if len(tagNames) == 0 {
-		return nil, core.NewBizError(core.ParamsError)
+		return nil, resp.NewBizError(resp.ParamsError)
 	}
 
 	users, err := s.repo.ListAll(ctx)

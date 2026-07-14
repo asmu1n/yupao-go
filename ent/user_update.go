@@ -9,6 +9,7 @@ import (
 	"time"
 	"yupao-go/ent/predicate"
 	"yupao-go/ent/user"
+	"yupao-go/internal/shared/usertype"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -62,12 +63,6 @@ func (_u *UserUpdate) SetNillableUserAccount(v *string) *UserUpdate {
 	return _u
 }
 
-// ClearUserAccount clears the value of the "user_account" field.
-func (_u *UserUpdate) ClearUserAccount() *UserUpdate {
-	_u.mutation.ClearUserAccount()
-	return _u
-}
-
 // SetAvatarURL sets the "avatar_url" field.
 func (_u *UserUpdate) SetAvatarURL(v string) *UserUpdate {
 	_u.mutation.SetAvatarURL(v)
@@ -89,14 +84,14 @@ func (_u *UserUpdate) ClearAvatarURL() *UserUpdate {
 }
 
 // SetGender sets the "gender" field.
-func (_u *UserUpdate) SetGender(v int8) *UserUpdate {
+func (_u *UserUpdate) SetGender(v usertype.Gender) *UserUpdate {
 	_u.mutation.ResetGender()
 	_u.mutation.SetGender(v)
 	return _u
 }
 
 // SetNillableGender sets the "gender" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableGender(v *int8) *UserUpdate {
+func (_u *UserUpdate) SetNillableGender(v *usertype.Gender) *UserUpdate {
 	if v != nil {
 		_u.SetGender(*v)
 	}
@@ -104,7 +99,7 @@ func (_u *UserUpdate) SetNillableGender(v *int8) *UserUpdate {
 }
 
 // AddGender adds value to the "gender" field.
-func (_u *UserUpdate) AddGender(v int8) *UserUpdate {
+func (_u *UserUpdate) AddGender(v usertype.Gender) *UserUpdate {
 	_u.mutation.AddGender(v)
 	return _u
 }
@@ -252,12 +247,6 @@ func (_u *UserUpdate) SetNillablePlanetCode(v *string) *UserUpdate {
 	return _u
 }
 
-// ClearPlanetCode clears the value of the "planet_code" field.
-func (_u *UserUpdate) ClearPlanetCode() *UserUpdate {
-	_u.mutation.ClearPlanetCode()
-	return _u
-}
-
 // SetTags sets the "tags" field.
 func (_u *UserUpdate) SetTags(v string) *UserUpdate {
 	_u.mutation.SetTags(v)
@@ -336,6 +325,11 @@ func (_u *UserUpdate) check() error {
 			return &ValidationError{Name: "avatar_url", err: fmt.Errorf(`ent: validator failed for field "User.avatar_url": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Gender(); ok {
+		if err := user.GenderValidator(int8(v)); err != nil {
+			return &ValidationError{Name: "gender", err: fmt.Errorf(`ent: validator failed for field "User.gender": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserPassword(); ok {
 		if err := user.UserPasswordValidator(v); err != nil {
 			return &ValidationError{Name: "user_password", err: fmt.Errorf(`ent: validator failed for field "User.user_password": %w`, err)}
@@ -384,9 +378,6 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UserAccount(); ok {
 		_spec.SetField(user.FieldUserAccount, field.TypeString, value)
-	}
-	if _u.mutation.UserAccountCleared() {
-		_spec.ClearField(user.FieldUserAccount, field.TypeString)
 	}
 	if value, ok := _u.mutation.AvatarURL(); ok {
 		_spec.SetField(user.FieldAvatarURL, field.TypeString, value)
@@ -441,9 +432,6 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.PlanetCode(); ok {
 		_spec.SetField(user.FieldPlanetCode, field.TypeString, value)
-	}
-	if _u.mutation.PlanetCodeCleared() {
-		_spec.ClearField(user.FieldPlanetCode, field.TypeString)
 	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(user.FieldTags, field.TypeString, value)
@@ -505,12 +493,6 @@ func (_u *UserUpdateOne) SetNillableUserAccount(v *string) *UserUpdateOne {
 	return _u
 }
 
-// ClearUserAccount clears the value of the "user_account" field.
-func (_u *UserUpdateOne) ClearUserAccount() *UserUpdateOne {
-	_u.mutation.ClearUserAccount()
-	return _u
-}
-
 // SetAvatarURL sets the "avatar_url" field.
 func (_u *UserUpdateOne) SetAvatarURL(v string) *UserUpdateOne {
 	_u.mutation.SetAvatarURL(v)
@@ -532,14 +514,14 @@ func (_u *UserUpdateOne) ClearAvatarURL() *UserUpdateOne {
 }
 
 // SetGender sets the "gender" field.
-func (_u *UserUpdateOne) SetGender(v int8) *UserUpdateOne {
+func (_u *UserUpdateOne) SetGender(v usertype.Gender) *UserUpdateOne {
 	_u.mutation.ResetGender()
 	_u.mutation.SetGender(v)
 	return _u
 }
 
 // SetNillableGender sets the "gender" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableGender(v *int8) *UserUpdateOne {
+func (_u *UserUpdateOne) SetNillableGender(v *usertype.Gender) *UserUpdateOne {
 	if v != nil {
 		_u.SetGender(*v)
 	}
@@ -547,7 +529,7 @@ func (_u *UserUpdateOne) SetNillableGender(v *int8) *UserUpdateOne {
 }
 
 // AddGender adds value to the "gender" field.
-func (_u *UserUpdateOne) AddGender(v int8) *UserUpdateOne {
+func (_u *UserUpdateOne) AddGender(v usertype.Gender) *UserUpdateOne {
 	_u.mutation.AddGender(v)
 	return _u
 }
@@ -695,12 +677,6 @@ func (_u *UserUpdateOne) SetNillablePlanetCode(v *string) *UserUpdateOne {
 	return _u
 }
 
-// ClearPlanetCode clears the value of the "planet_code" field.
-func (_u *UserUpdateOne) ClearPlanetCode() *UserUpdateOne {
-	_u.mutation.ClearPlanetCode()
-	return _u
-}
-
 // SetTags sets the "tags" field.
 func (_u *UserUpdateOne) SetTags(v string) *UserUpdateOne {
 	_u.mutation.SetTags(v)
@@ -792,6 +768,11 @@ func (_u *UserUpdateOne) check() error {
 			return &ValidationError{Name: "avatar_url", err: fmt.Errorf(`ent: validator failed for field "User.avatar_url": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Gender(); ok {
+		if err := user.GenderValidator(int8(v)); err != nil {
+			return &ValidationError{Name: "gender", err: fmt.Errorf(`ent: validator failed for field "User.gender": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserPassword(); ok {
 		if err := user.UserPasswordValidator(v); err != nil {
 			return &ValidationError{Name: "user_password", err: fmt.Errorf(`ent: validator failed for field "User.user_password": %w`, err)}
@@ -858,9 +839,6 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if value, ok := _u.mutation.UserAccount(); ok {
 		_spec.SetField(user.FieldUserAccount, field.TypeString, value)
 	}
-	if _u.mutation.UserAccountCleared() {
-		_spec.ClearField(user.FieldUserAccount, field.TypeString)
-	}
 	if value, ok := _u.mutation.AvatarURL(); ok {
 		_spec.SetField(user.FieldAvatarURL, field.TypeString, value)
 	}
@@ -914,9 +892,6 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.PlanetCode(); ok {
 		_spec.SetField(user.FieldPlanetCode, field.TypeString, value)
-	}
-	if _u.mutation.PlanetCodeCleared() {
-		_spec.ClearField(user.FieldPlanetCode, field.TypeString)
 	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(user.FieldTags, field.TypeString, value)

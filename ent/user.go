@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"yupao-go/ent/user"
+	"yupao-go/internal/shared/usertype"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -18,19 +19,19 @@ type User struct {
 	// ID of the ent.
 	ID int64 `json:"id,omitempty"`
 	// Username holds the value of the "username" field.
-	Username string `json:"username,omitempty"`
+	Username *string `json:"username,omitempty"`
 	// UserAccount holds the value of the "user_account" field.
 	UserAccount string `json:"user_account,omitempty"`
 	// AvatarURL holds the value of the "avatar_url" field.
-	AvatarURL string `json:"avatar_url,omitempty"`
+	AvatarURL *string `json:"avatar_url,omitempty"`
 	// Gender holds the value of the "gender" field.
-	Gender int8 `json:"gender,omitempty"`
+	Gender *usertype.Gender `json:"gender,omitempty"`
 	// UserPassword holds the value of the "user_password" field.
 	UserPassword string `json:"-"`
 	// Phone holds the value of the "phone" field.
-	Phone string `json:"phone,omitempty"`
+	Phone *string `json:"phone,omitempty"`
 	// Email holds the value of the "email" field.
-	Email string `json:"email,omitempty"`
+	Email *string `json:"email,omitempty"`
 	// UserStatus holds the value of the "user_status" field.
 	UserStatus int `json:"user_status,omitempty"`
 	// CreateTime holds the value of the "create_time" field.
@@ -84,7 +85,8 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field username", values[i])
 			} else if value.Valid {
-				_m.Username = value.String
+				_m.Username = new(string)
+				*_m.Username = value.String
 			}
 		case user.FieldUserAccount:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -96,13 +98,15 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field avatar_url", values[i])
 			} else if value.Valid {
-				_m.AvatarURL = value.String
+				_m.AvatarURL = new(string)
+				*_m.AvatarURL = value.String
 			}
 		case user.FieldGender:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field gender", values[i])
 			} else if value.Valid {
-				_m.Gender = int8(value.Int64)
+				_m.Gender = new(usertype.Gender)
+				*_m.Gender = usertype.Gender(value.Int64)
 			}
 		case user.FieldUserPassword:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -114,13 +118,15 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field phone", values[i])
 			} else if value.Valid {
-				_m.Phone = value.String
+				_m.Phone = new(string)
+				*_m.Phone = value.String
 			}
 		case user.FieldEmail:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field email", values[i])
 			} else if value.Valid {
-				_m.Email = value.String
+				_m.Email = new(string)
+				*_m.Email = value.String
 			}
 		case user.FieldUserStatus:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -200,25 +206,35 @@ func (_m *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("username=")
-	builder.WriteString(_m.Username)
+	if v := _m.Username; v != nil {
+		builder.WriteString("username=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("user_account=")
 	builder.WriteString(_m.UserAccount)
 	builder.WriteString(", ")
-	builder.WriteString("avatar_url=")
-	builder.WriteString(_m.AvatarURL)
+	if v := _m.AvatarURL; v != nil {
+		builder.WriteString("avatar_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
-	builder.WriteString("gender=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Gender))
+	if v := _m.Gender; v != nil {
+		builder.WriteString("gender=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("user_password=<sensitive>")
 	builder.WriteString(", ")
-	builder.WriteString("phone=")
-	builder.WriteString(_m.Phone)
+	if v := _m.Phone; v != nil {
+		builder.WriteString("phone=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
-	builder.WriteString("email=")
-	builder.WriteString(_m.Email)
+	if v := _m.Email; v != nil {
+		builder.WriteString("email=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("user_status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UserStatus))

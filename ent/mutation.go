@@ -10,6 +10,7 @@ import (
 	"time"
 	"yupao-go/ent/predicate"
 	"yupao-go/ent/user"
+	"yupao-go/internal/shared/usertype"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -36,8 +37,8 @@ type UserMutation struct {
 	username       *string
 	user_account   *string
 	avatar_url     *string
-	gender         *int8
-	addgender      *int8
+	gender         *usertype.Gender
+	addgender      *usertype.Gender
 	user_password  *string
 	phone          *string
 	email          *string
@@ -178,7 +179,7 @@ func (m *UserMutation) Username() (r string, exists bool) {
 // OldUsername returns the old "username" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldUsername(ctx context.Context) (v string, err error) {
+func (m *UserMutation) OldUsername(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUsername is only allowed on UpdateOne operations")
 	}
@@ -241,22 +242,9 @@ func (m *UserMutation) OldUserAccount(ctx context.Context) (v string, err error)
 	return oldValue.UserAccount, nil
 }
 
-// ClearUserAccount clears the value of the "user_account" field.
-func (m *UserMutation) ClearUserAccount() {
-	m.user_account = nil
-	m.clearedFields[user.FieldUserAccount] = struct{}{}
-}
-
-// UserAccountCleared returns if the "user_account" field was cleared in this mutation.
-func (m *UserMutation) UserAccountCleared() bool {
-	_, ok := m.clearedFields[user.FieldUserAccount]
-	return ok
-}
-
 // ResetUserAccount resets all changes to the "user_account" field.
 func (m *UserMutation) ResetUserAccount() {
 	m.user_account = nil
-	delete(m.clearedFields, user.FieldUserAccount)
 }
 
 // SetAvatarURL sets the "avatar_url" field.
@@ -276,7 +264,7 @@ func (m *UserMutation) AvatarURL() (r string, exists bool) {
 // OldAvatarURL returns the old "avatar_url" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldAvatarURL(ctx context.Context) (v string, err error) {
+func (m *UserMutation) OldAvatarURL(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldAvatarURL is only allowed on UpdateOne operations")
 	}
@@ -309,13 +297,13 @@ func (m *UserMutation) ResetAvatarURL() {
 }
 
 // SetGender sets the "gender" field.
-func (m *UserMutation) SetGender(i int8) {
-	m.gender = &i
+func (m *UserMutation) SetGender(u usertype.Gender) {
+	m.gender = &u
 	m.addgender = nil
 }
 
 // Gender returns the value of the "gender" field in the mutation.
-func (m *UserMutation) Gender() (r int8, exists bool) {
+func (m *UserMutation) Gender() (r usertype.Gender, exists bool) {
 	v := m.gender
 	if v == nil {
 		return
@@ -326,7 +314,7 @@ func (m *UserMutation) Gender() (r int8, exists bool) {
 // OldGender returns the old "gender" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldGender(ctx context.Context) (v int8, err error) {
+func (m *UserMutation) OldGender(ctx context.Context) (v *usertype.Gender, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldGender is only allowed on UpdateOne operations")
 	}
@@ -340,17 +328,17 @@ func (m *UserMutation) OldGender(ctx context.Context) (v int8, err error) {
 	return oldValue.Gender, nil
 }
 
-// AddGender adds i to the "gender" field.
-func (m *UserMutation) AddGender(i int8) {
+// AddGender adds u to the "gender" field.
+func (m *UserMutation) AddGender(u usertype.Gender) {
 	if m.addgender != nil {
-		*m.addgender += i
+		*m.addgender += u
 	} else {
-		m.addgender = &i
+		m.addgender = &u
 	}
 }
 
 // AddedGender returns the value that was added to the "gender" field in this mutation.
-func (m *UserMutation) AddedGender() (r int8, exists bool) {
+func (m *UserMutation) AddedGender() (r usertype.Gender, exists bool) {
 	v := m.addgender
 	if v == nil {
 		return
@@ -431,7 +419,7 @@ func (m *UserMutation) Phone() (r string, exists bool) {
 // OldPhone returns the old "phone" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldPhone(ctx context.Context) (v string, err error) {
+func (m *UserMutation) OldPhone(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldPhone is only allowed on UpdateOne operations")
 	}
@@ -480,7 +468,7 @@ func (m *UserMutation) Email() (r string, exists bool) {
 // OldEmail returns the old "email" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldEmail(ctx context.Context) (v string, err error) {
+func (m *UserMutation) OldEmail(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldEmail is only allowed on UpdateOne operations")
 	}
@@ -783,22 +771,9 @@ func (m *UserMutation) OldPlanetCode(ctx context.Context) (v string, err error) 
 	return oldValue.PlanetCode, nil
 }
 
-// ClearPlanetCode clears the value of the "planet_code" field.
-func (m *UserMutation) ClearPlanetCode() {
-	m.planet_code = nil
-	m.clearedFields[user.FieldPlanetCode] = struct{}{}
-}
-
-// PlanetCodeCleared returns if the "planet_code" field was cleared in this mutation.
-func (m *UserMutation) PlanetCodeCleared() bool {
-	_, ok := m.clearedFields[user.FieldPlanetCode]
-	return ok
-}
-
 // ResetPlanetCode resets all changes to the "planet_code" field.
 func (m *UserMutation) ResetPlanetCode() {
 	m.planet_code = nil
-	delete(m.clearedFields, user.FieldPlanetCode)
 }
 
 // SetTags sets the "tags" field.
@@ -1031,7 +1006,7 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		m.SetAvatarURL(v)
 		return nil
 	case user.FieldGender:
-		v, ok := value.(int8)
+		v, ok := value.(usertype.Gender)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -1153,7 +1128,7 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 func (m *UserMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case user.FieldGender:
-		v, ok := value.(int8)
+		v, ok := value.(usertype.Gender)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -1191,9 +1166,6 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldUsername) {
 		fields = append(fields, user.FieldUsername)
 	}
-	if m.FieldCleared(user.FieldUserAccount) {
-		fields = append(fields, user.FieldUserAccount)
-	}
 	if m.FieldCleared(user.FieldAvatarURL) {
 		fields = append(fields, user.FieldAvatarURL)
 	}
@@ -1205,9 +1177,6 @@ func (m *UserMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(user.FieldEmail) {
 		fields = append(fields, user.FieldEmail)
-	}
-	if m.FieldCleared(user.FieldPlanetCode) {
-		fields = append(fields, user.FieldPlanetCode)
 	}
 	if m.FieldCleared(user.FieldTags) {
 		fields = append(fields, user.FieldTags)
@@ -1229,9 +1198,6 @@ func (m *UserMutation) ClearField(name string) error {
 	case user.FieldUsername:
 		m.ClearUsername()
 		return nil
-	case user.FieldUserAccount:
-		m.ClearUserAccount()
-		return nil
 	case user.FieldAvatarURL:
 		m.ClearAvatarURL()
 		return nil
@@ -1243,9 +1209,6 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldEmail:
 		m.ClearEmail()
-		return nil
-	case user.FieldPlanetCode:
-		m.ClearPlanetCode()
 		return nil
 	case user.FieldTags:
 		m.ClearTags()

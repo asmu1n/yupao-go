@@ -12,13 +12,8 @@ import (
 var testDB *database.DB
 
 func TestMain(m *testing.M) {
-	cfg, err := database.LoadConfig()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
-		os.Exit(1)
-	}
 
-	testDB, err = database.New(cfg)
+	testDB, err := database.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "connect db: %v\n", err)
 		os.Exit(1)
