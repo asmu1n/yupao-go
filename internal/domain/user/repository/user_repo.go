@@ -27,7 +27,7 @@ func (r *EntRepository) Create(ctx context.Context, u *user.User) (int64, error)
 		SetNillableGender(u.Gender).
 		SetNillablePhone(u.Phone).
 		SetNillableEmail(u.Email).
-		SetNillableTags(u.Tags).
+		SetTags(u.Tags).
 		Save(ctx)
 	if err != nil {
 		return 0, err
@@ -82,7 +82,7 @@ func (r *EntRepository) Update(ctx context.Context, id int64, u *user.User) erro
 		SetNillableGender(u.Gender).
 		SetNillablePhone(u.Phone).
 		SetNillableEmail(u.Email).
-		SetNillableTags(u.Tags).
+		SetTags(u.Tags).
 		Save(ctx)
 	return err
 }
@@ -113,6 +113,8 @@ func toDomain(e *ent.User) *user.User {
 		UserStatus:  e.UserStatus,
 		UserRole:    e.UserRole,
 		CreateTime:  e.CreateTime,
+		Tags:        e.Tags,
+		PlanetCode:  e.PlanetCode,
 	}
 	if e.Username != nil {
 		u.Username = e.Username
@@ -130,12 +132,6 @@ func toDomain(e *ent.User) *user.User {
 	}
 	if e.Email != nil {
 		u.Email = e.Email
-	}
-	if e.PlanetCode != "" {
-		u.PlanetCode = e.PlanetCode
-	}
-	if e.Tags != "" {
-		u.Tags = &e.Tags
 	}
 	return u
 }
