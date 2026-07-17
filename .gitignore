@@ -9,7 +9,7 @@ _reference/
 *.dll
 *.so
 *.dylib
-server
+/server
 
 tmp/
 *.tmp
