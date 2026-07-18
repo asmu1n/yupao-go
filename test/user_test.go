@@ -18,17 +18,14 @@ func TestDBConnection(t *testing.T) {
 	t.Log("migration ok")
 }
 
-func TestQueryUsers(t *testing.T) {
+func TestQueryUserCount(t *testing.T) {
 	ctx := context.Background()
 
-	users, err := Client().User.Query().All(ctx)
+	count, err := Client().User.Query().Count(ctx)
 	if err != nil {
-		t.Fatalf("query users: %v", err)
+		t.Fatalf("query users count: %v", err)
 	}
-	t.Logf("found %d users", len(users))
-	for _, u := range users {
-		t.Logf("  id=%d account=%s role=%d tags=%s", u.ID, u.UserAccount, u.UserRole, u.Tags)
-	}
+	t.Logf("found %d users", count)
 }
 
 func TestSeedUsers(t *testing.T) {

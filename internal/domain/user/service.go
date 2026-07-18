@@ -2,23 +2,45 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"regexp"
-	"sort"
+	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"yupao-go/internal/algo"
+	"yupao-go/internal/infra/cache"
+	"yupao-go/internal/infra/lock"
 	"yupao-go/internal/shared/resp"
 )
 
 var validAccountPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
+const (
+	matchCacheTTL = 60 * time.Minute
+	lockTTL       = 10 * time.Minute
+	lockKey       = "lock:cron:warmup_match_users"
+	maxMatchNum   = 20
+	warmBatchSize = 200
+	warmWorkers   = 4
+)
+
 type Service struct {
-	repo Repository
+	repo  Repository
+	cache cache.Cache
+	// 缓存预热锁
+	warmUpLock sync.Mutex
+	// 分布式锁
+	locker lock.Locker
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, cache cache.Cache, locker lock.Locker) *Service {
+	return &Service{repo: repo, cache: cache, locker: locker}
+}
+
+func matchCacheKey(userID int64, num int) string {
+	return fmt.Sprintf("yupao:match:%d:%d", userID, num)
 }
 
 // Register 用户注册，校验参数 + 查重 + bcrypt 加密后入库，返回新用户 ID
@@ -74,7 +96,6 @@ func (s *Service) Login(ctx context.Context, account, password string) (*User, e
 		return nil, resp.NewBizErrorWithDetail(resp.ParamsError, "账号或密码错误")
 	}
 
-	u.Password = ""
 	return u, nil
 }
 
@@ -87,7 +108,6 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
 	if u == nil {
 		return nil, resp.NewBizError(resp.NotFound)
 	}
-	u.Password = ""
 	return u, nil
 }
 
@@ -117,7 +137,12 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 		return resp.NewBizError(resp.NotFound)
 	}
 
-	return s.repo.Update(ctx, targetID, u)
+	if err := s.repo.Update(ctx, targetID, u); err != nil {
+		return err
+	}
+
+	s.invalidateMatchCache(ctx, targetID)
+	return nil
 }
 
 // SearchByTags 根据标签列表搜索用户，内存过滤匹配所有标签的用户
@@ -143,7 +168,6 @@ func (s *Service) SearchByTags(ctx context.Context, tagNames []string) ([]*User,
 			continue
 		}
 		if containsAll(userTags, tagSet) {
-			u.Password = ""
 			result = append(result, u)
 		}
 	}
@@ -152,23 +176,59 @@ func (s *Service) SearchByTags(ctx context.Context, tagNames []string) ([]*User,
 
 // MatchUsers 基于标签编辑距离推荐最相似的 num 个用户
 func (s *Service) MatchUsers(ctx context.Context, num int, loginUser *User) ([]*User, error) {
+	if len(loginUser.ParseTags()) == 0 {
+		return nil, nil
+	}
+
+	if s.cache == nil {
+		return s.matchUsers(ctx, num, loginUser)
+	}
+
+	return cache.TryFetch(ctx, s.cache, matchCacheKey(loginUser.ID, num), matchCacheTTL, func() ([]*User, error) {
+		return s.matchUsers(ctx, num, loginUser)
+	})
+}
+
+// 分批获取所有活跃用户（采取游标策略）
+func (s *Service) listAllActiveMatchCandidates(ctx context.Context, activeSince time.Time) ([]*User, error) {
+	afterID := int64(0)
+	all := make([]*User, 0, warmBatchSize)
+
+	for {
+		batch, err := s.repo.ListActiveMatchCandidates(ctx, afterID, warmBatchSize, activeSince)
+		if err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+
+		all = append(all, batch...)
+		// 记录当前批次数据的最后 Id
+		afterID = batch[len(batch)-1].ID
+
+		// 如果批次获取的数据量小于限制说明后面没有数据，直接取消并返回数据
+		if len(batch) < warmBatchSize {
+			break
+		}
+	}
+
+	return all, nil
+}
+
+func (s *Service) matchUsers(ctx context.Context, num int, loginUser *User) ([]*User, error) {
 	users, err := s.repo.ListAll(ctx)
 	if err != nil {
 		return nil, err
 	}
+	return s.matchUsersFromCandidates(ctx, num, loginUser, users)
+}
 
+func (s *Service) matchUsersFromCandidates(ctx context.Context, num int, loginUser *User, candidates []*User) ([]*User, error) {
 	loginTags := loginUser.ParseTags()
-	if len(loginTags) == 0 {
-		return nil, nil
-	}
 
-	type pair struct {
-		userID   int64
-		distance int
-	}
-
-	var pairs []pair
-	for _, u := range users {
+	scoredCandidates := make([]scoredUser, 0, len(candidates))
+	for _, u := range candidates {
 		if u.ID == loginUser.ID {
 			continue
 		}
@@ -176,21 +236,13 @@ func (s *Service) MatchUsers(ctx context.Context, num int, loginUser *User) ([]*
 		if len(uTags) == 0 {
 			continue
 		}
-		dist := algo.MinDistance(loginTags, uTags)
-		pairs = append(pairs, pair{userID: u.ID, distance: dist})
+		scoredCandidates = append(scoredCandidates, scoredUser{
+			userID:   u.ID,
+			distance: algo.MinDistance(loginTags, uTags),
+		})
 	}
 
-	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i].distance < pairs[j].distance
-	})
-	if len(pairs) > num {
-		pairs = pairs[:num]
-	}
-
-	ids := make([]int64, len(pairs))
-	for i, p := range pairs {
-		ids[i] = p.userID
-	}
+	ids := topKNearest(scoredCandidates, num)
 
 	matched, err := s.repo.ListByIDs(ctx, ids)
 	if err != nil {
@@ -199,7 +251,6 @@ func (s *Service) MatchUsers(ctx context.Context, num int, loginUser *User) ([]*
 
 	byID := make(map[int64]*User, len(matched))
 	for _, u := range matched {
-		u.Password = ""
 		byID[u.ID] = u
 	}
 

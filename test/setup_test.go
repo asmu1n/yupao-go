@@ -13,7 +13,8 @@ var testDB *database.DB
 
 func TestMain(m *testing.M) {
 
-	testDB, err := database.New()
+	var err error
+	testDB, err = database.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "connect db: %v\n", err)
 		os.Exit(1)

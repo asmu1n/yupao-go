@@ -1,6 +1,10 @@
 package user
 
-import "context"
+import (
+	"context"
+	"time"
+	"yupao-go/internal/shared/page"
+)
 
 type Repository interface {
 	Create(ctx context.Context, u *User) (int64, error)
@@ -10,5 +14,7 @@ type Repository interface {
 	ExistsByPlanetCode(ctx context.Context, code string) (bool, error)
 	Update(ctx context.Context, id int64, u *User) error
 	ListAll(ctx context.Context) ([]*User, error)
+	ListPage(ctx context.Context, pageParams QueryParams) (*page.PageResponse[*User], error)
 	ListByIDs(ctx context.Context, ids []int64) ([]*User, error)
+	ListActiveMatchCandidates(ctx context.Context, afterID int64, limit int, activeSince time.Time) ([]*User, error)
 }

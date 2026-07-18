@@ -1,18 +1,14 @@
 package router
 
 import (
-	"yupao-go/ent"
 	"yupao-go/internal/domain/user"
-	repository "yupao-go/internal/domain/user/repository"
 	"yupao-go/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
-func registerUser(api *gin.RouterGroup, client *ent.Client) {
-	repo := repository.New(client)
-	svc := user.NewService(repo)
-	h := user.NewUserHandler(svc)
+func registerUser(api *gin.RouterGroup, userSvc *user.Service) {
+	h := user.NewUserHandler(userSvc)
 
 	u := api.Group("/user")
 	{
