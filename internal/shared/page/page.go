@@ -7,11 +7,15 @@ const (
 )
 
 type PageRequest struct {
-	PageSize int `json:"pageSize"`
-	PageNum  int `json:"pageNum"`
+	PageSize   int  `json:"pageSize"`
+	PageNum    int  `json:"pageNum"`
+	normalized bool `json:"-"`
 }
 
-func (p *PageRequest) Normalize() {
+func (p *PageRequest) normalize() {
+	if p.normalized {
+		return
+	}
 	if p.PageSize <= 0 {
 		p.PageSize = defaultPageSize
 	}
@@ -21,13 +25,16 @@ func (p *PageRequest) Normalize() {
 	if p.PageNum <= 0 {
 		p.PageNum = defaultPageNum
 	}
+	p.normalized = true
 }
 
 func (p *PageRequest) Offset() int {
+	p.normalize()
 	return (p.PageNum - 1) * p.PageSize
 }
 
 func (p *PageRequest) Limit() int {
+	p.normalize()
 	return p.PageSize
 }
 

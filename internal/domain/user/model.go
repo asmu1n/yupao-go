@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"yupao-go/internal/shared/page"
 	"yupao-go/internal/shared/usertype"
 )
 
@@ -47,4 +48,8 @@ type RegisterParams struct {
 type LoginParams struct {
 	UserAccount  string `json:"userAccount"  binding:"required,min=4"`
 	UserPassword string `json:"userPassword" binding:"required,min=8"`
+}
+
+type QueryParams struct {
+	page.PageRequest
 }

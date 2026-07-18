@@ -117,6 +117,7 @@ func (h *UserHandler) CurrentUser(c *gin.Context) {
 // @Router   /user/search/tags [get]
 func (h *UserHandler) SearchByTags(c *gin.Context) {
 	tags := c.QueryArray("tagNameList")
+
 	users, err := h.svc.SearchByTags(c.Request.Context(), tags)
 	if err != nil {
 		resp.RespondError(c, err)
