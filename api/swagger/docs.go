@@ -35,7 +35,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/resp.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -51,7 +51,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -87,7 +87,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/resp.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -103,7 +103,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -127,7 +127,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -164,7 +164,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/resp.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -183,7 +183,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -218,7 +218,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/resp.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -235,7 +235,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -274,7 +274,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/resp.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -293,7 +293,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -331,19 +331,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/resp.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -351,7 +351,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "resp.Response": {
+        "response.Response": {
             "type": "object",
             "properties": {
                 "code": {
@@ -421,7 +421,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
-                    "$ref": "#/definitions/usertype.Gender"
+                    "$ref": "#/definitions/types.Gender"
                 },
                 "id": {
                     "type": "integer"
@@ -449,7 +449,7 @@ const docTemplate = `{
                 }
             }
         },
-        "usertype.Gender": {
+        "types.Gender": {
             "type": "integer",
             "format": "int32",
             "enum": [

@@ -1,4 +1,4 @@
-package repository
+package repo
 
 import (
 	"context"
@@ -7,15 +7,17 @@ import (
 	"yupao-go/ent"
 	"yupao-go/ent/predicate"
 	entuser "yupao-go/ent/user"
-	"yupao-go/internal/domain/user"
-	"yupao-go/internal/shared/page"
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/page"
+	"yupao-go/internal/pkg/types"
+	"yupao-go/internal/module/user"
 )
 
+// EntRepository 基于 ent 的用户仓储实现。
 type EntRepository struct {
 	client *ent.Client
 }
 
+// New 构造 ent 用户仓储。
 func New(client *ent.Client) *EntRepository {
 	return &EntRepository{client: client}
 }
@@ -101,7 +103,6 @@ func (r *EntRepository) ListAll(ctx context.Context) ([]*user.User, error) {
 }
 
 func (r *EntRepository) ListPage(ctx context.Context, params user.QueryParams) (*page.PageResponse[*user.User], error) {
-
 	query := r.client.User.Query()
 	query = query.Offset(params.PageRequest.Offset()).Limit(params.PageRequest.Limit())
 	rows, err := query.Where(entuser.IsDeleteEQ(0)).All(ctx)
@@ -125,6 +126,7 @@ func (r *EntRepository) ListByIDs(ctx context.Context, ids []int64) ([]*user.Use
 	return toDomainList(rows), nil
 }
 
+// ListActiveMatchCandidates 分批查询可参与匹配的活跃用户，供在线匹配与缓存预热共用。
 func (r *EntRepository) ListActiveMatchCandidates(ctx context.Context, afterID int64, limit int, activeSince time.Time) ([]*user.User, error) {
 	if limit <= 0 {
 		return nil, nil
@@ -167,7 +169,7 @@ func toDomain(e *ent.User) *user.User {
 		u.AvatarURL = e.AvatarURL
 	}
 	if e.Gender != nil {
-		gender := usertype.Gender(*e.Gender)
+		gender := types.Gender(*e.Gender)
 		u.Gender = &gender
 	}
 	if e.Phone != nil {

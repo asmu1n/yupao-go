@@ -1,6 +1,6 @@
 basePath: /api
 definitions:
-  resp.Response:
+  response.Response:
     properties:
       code:
         type: integer
@@ -93,7 +93,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/resp.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   $ref: '#/definitions/user.User'
@@ -101,7 +101,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - SessionAuth: []
       summary: 获取当前登录用户
@@ -126,7 +126,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/resp.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   $ref: '#/definitions/user.User'
@@ -134,7 +134,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
       summary: 用户登录
       tags:
       - user
@@ -146,7 +146,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - SessionAuth: []
       summary: 用户注销
@@ -169,7 +169,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/resp.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   items:
@@ -179,7 +179,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - SessionAuth: []
       summary: 匹配相似用户
@@ -203,7 +203,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/resp.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   format: int64
@@ -212,7 +212,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
       summary: 用户注册
       tags:
       - user
@@ -234,7 +234,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/resp.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   items:
@@ -244,7 +244,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - SessionAuth: []
       summary: 根据标签搜索用户
@@ -267,15 +267,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/resp.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - SessionAuth: []
       summary: 更新用户信息

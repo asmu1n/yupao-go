@@ -1,14 +1,16 @@
-package router
+package httpapi
 
 import (
-	"yupao-go/internal/domain/user"
-	"yupao-go/internal/middleware"
+	"yupao-go/internal/httpapi/middleware"
+	"yupao-go/internal/module/user"
+	userhttp "yupao-go/internal/module/user/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+// registerUser 注册用户相关路由。
 func registerUser(api *gin.RouterGroup, userSvc *user.Service) {
-	h := user.NewUserHandler(userSvc)
+	h := userhttp.NewHandler(userSvc)
 
 	u := api.Group("/user")
 	{

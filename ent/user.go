@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 	"yupao-go/ent/user"
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/types"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -25,7 +25,7 @@ type User struct {
 	// AvatarURL holds the value of the "avatar_url" field.
 	AvatarURL *string `json:"avatar_url,omitempty"`
 	// Gender holds the value of the "gender" field.
-	Gender *usertype.Gender `json:"gender,omitempty"`
+	Gender *types.Gender `json:"gender,omitempty"`
 	// UserPassword holds the value of the "user_password" field.
 	UserPassword string `json:"-"`
 	// Phone holds the value of the "phone" field.
@@ -105,8 +105,8 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field gender", values[i])
 			} else if value.Valid {
-				_m.Gender = new(usertype.Gender)
-				*_m.Gender = usertype.Gender(value.Int64)
+				_m.Gender = new(types.Gender)
+				*_m.Gender = types.Gender(value.Int64)
 			}
 		case user.FieldUserPassword:
 			if value, ok := values[i].(*sql.NullString); !ok {

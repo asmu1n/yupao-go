@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 	"yupao-go/ent/user"
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/types"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -56,13 +56,13 @@ func (_c *UserCreate) SetNillableAvatarURL(v *string) *UserCreate {
 }
 
 // SetGender sets the "gender" field.
-func (_c *UserCreate) SetGender(v usertype.Gender) *UserCreate {
+func (_c *UserCreate) SetGender(v types.Gender) *UserCreate {
 	_c.mutation.SetGender(v)
 	return _c
 }
 
 // SetNillableGender sets the "gender" field if the given value is not nil.
-func (_c *UserCreate) SetNillableGender(v *usertype.Gender) *UserCreate {
+func (_c *UserCreate) SetNillableGender(v *types.Gender) *UserCreate {
 	if v != nil {
 		_c.SetGender(*v)
 	}

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"yupao-go/internal/shared/page"
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/page"
+	"yupao-go/internal/pkg/types"
 )
 
 const (
@@ -19,7 +19,7 @@ type User struct {
 	Password    string           `json:"-"`
 	Username    *string          `json:"username"`
 	AvatarURL   *string          `json:"avatarUrl"`
-	Gender      *usertype.Gender `json:"gender"`
+	Gender      *types.Gender `json:"gender"`
 	Phone       *string          `json:"phone"`
 	Email       *string          `json:"email"`
 	PlanetCode  string           `json:"planetCode"`

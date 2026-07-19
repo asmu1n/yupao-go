@@ -1,6 +1,7 @@
-package algo
+package user
 
-func MinDistance(tags1, tags2 []string) int {
+// minDistance 计算两组标签的最小编辑距离，用于匹配相似度（距离越小越相似）。
+func minDistance(tags1, tags2 []string) int {
 	n := len(tags1)
 	m := len(tags2)
 

@@ -3,7 +3,7 @@ package schema
 import (
 	"time"
 
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/types"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
@@ -40,9 +40,9 @@ func (User) Fields() []ent.Field {
 		field.Int8("gender").
 			Optional().
 			Nillable().
-			GoType(usertype.Gender(0)).
+			GoType(types.Gender(0)).
 			Validate(func(v int8) error {
-				return usertype.Gender(v).Validate()
+				return types.Gender(v).Validate()
 			}),
 		field.String("user_password").
 			MaxLen(512).

@@ -1,4 +1,4 @@
-package resp
+package response
 
 import "fmt"
 

@@ -1,23 +1,24 @@
-package user
+package userhttp
 
 import (
 	"strconv"
 
-	"yupao-go/internal/middleware"
-	"yupao-go/internal/shared/resp"
+	"yupao-go/internal/httpapi/middleware"
+	"yupao-go/internal/pkg/response"
+	"yupao-go/internal/module/user"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
-const sessionKeyUserID = middleware.SessionKeyUserID
-
-type UserHandler struct {
-	svc *Service
+// Handler 用户 HTTP 接口层，依赖 user.Service，不包含业务逻辑。
+type Handler struct {
+	svc *user.Service
 }
 
-func NewUserHandler(svc *Service) *UserHandler {
-	return &UserHandler{svc: svc}
+// NewHandler 构造用户 HTTP Handler。
+func NewHandler(svc *user.Service) *Handler {
+	return &Handler{svc: svc}
 }
 
 // Register
@@ -26,21 +27,21 @@ func NewUserHandler(svc *Service) *UserHandler {
 // @Accept   json
 // @Produce  json
 // @Param    body body     user.RegisterParams true "注册参数"
-// @Success  200  {object} resp.Response{data=int64}
-// @Failure  400  {object} resp.Response
+// @Success  200  {object} response.Response{data=int64}
+// @Failure  400  {object} response.Response
 // @Router   /user/register [post]
-func (h *UserHandler) Register(c *gin.Context) {
-	var params RegisterParams
+func (h *Handler) Register(c *gin.Context) {
+	var params user.RegisterParams
 	if err := c.ShouldBindJSON(&params); err != nil {
-		resp.RespondBindingError(c, err)
+		response.RespondBindingError(c, err)
 		return
 	}
 	id, err := h.svc.Register(c.Request.Context(), params)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
-	resp.RespondOK(c, id)
+	response.RespondOK(c, id)
 }
 
 // Login
@@ -50,24 +51,24 @@ func (h *UserHandler) Register(c *gin.Context) {
 // @Accept   json
 // @Produce  json
 // @Param    body body     user.LoginParams true "登录参数"
-// @Success  200  {object} resp.Response{data=user.User}
-// @Failure  400  {object} resp.Response
+// @Success  200  {object} response.Response{data=user.User}
+// @Failure  400  {object} response.Response
 // @Router   /user/login [post]
-func (h *UserHandler) Login(c *gin.Context) {
-	var params LoginParams
+func (h *Handler) Login(c *gin.Context) {
+	var params user.LoginParams
 	if err := c.ShouldBindJSON(&params); err != nil {
-		resp.RespondBindingError(c, err)
+		response.RespondBindingError(c, err)
 		return
 	}
 	u, err := h.svc.Login(c.Request.Context(), params.UserAccount, params.UserPassword)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
 	session := sessions.Default(c)
-	session.Set(sessionKeyUserID, u.ID)
-	session.Save()
-	resp.RespondOK(c, u)
+	session.Set(middleware.SessionKeyUserID, u.ID)
+	_ = session.Save()
+	response.RespondOK(c, u)
 }
 
 // Logout
@@ -75,13 +76,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 // @Tags     user
 // @Produce  json
 // @Security SessionAuth
-// @Success  200 {object} resp.Response
+// @Success  200 {object} response.Response
 // @Router   /user/logout [post]
-func (h *UserHandler) Logout(c *gin.Context) {
+func (h *Handler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
-	session.Save()
-	resp.RespondOK(c, nil)
+	_ = session.Save()
+	response.RespondOK(c, nil)
 }
 
 // CurrentUser
@@ -89,21 +90,21 @@ func (h *UserHandler) Logout(c *gin.Context) {
 // @Tags     user
 // @Produce  json
 // @Security SessionAuth
-// @Success  200 {object} resp.Response{data=user.User}
-// @Failure  401 {object} resp.Response
+// @Success  200 {object} response.Response{data=user.User}
+// @Failure  401 {object} response.Response
 // @Router   /user/current [get]
-func (h *UserHandler) CurrentUser(c *gin.Context) {
+func (h *Handler) CurrentUser(c *gin.Context) {
 	uid, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
 	fresh, err := h.svc.GetByID(c.Request.Context(), uid)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
-	resp.RespondOK(c, fresh)
+	response.RespondOK(c, fresh)
 }
 
 // SearchByTags
@@ -112,18 +113,18 @@ func (h *UserHandler) CurrentUser(c *gin.Context) {
 // @Produce  json
 // @Security SessionAuth
 // @Param    tagNameList query    []string true "标签列表"
-// @Success  200         {object} resp.Response{data=[]user.User}
-// @Failure  400         {object} resp.Response
+// @Success  200         {object} response.Response{data=[]user.User}
+// @Failure  400         {object} response.Response
 // @Router   /user/search/tags [get]
-func (h *UserHandler) SearchByTags(c *gin.Context) {
+func (h *Handler) SearchByTags(c *gin.Context) {
 	tags := c.QueryArray("tagNameList")
 
 	users, err := h.svc.SearchByTags(c.Request.Context(), tags)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
-	resp.RespondOK(c, users)
+	response.RespondOK(c, users)
 }
 
 // Update
@@ -133,27 +134,27 @@ func (h *UserHandler) SearchByTags(c *gin.Context) {
 // @Produce  json
 // @Security SessionAuth
 // @Param    body body     user.User true "用户信息"
-// @Success  200  {object} resp.Response
-// @Failure  400  {object} resp.Response
-// @Failure  403  {object} resp.Response
+// @Success  200  {object} response.Response
+// @Failure  400  {object} response.Response
+// @Failure  403  {object} response.Response
 // @Router   /user/update [post]
-func (h *UserHandler) Update(c *gin.Context) {
+func (h *Handler) Update(c *gin.Context) {
 	loginUserID, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
-	var target User
+	var target user.User
 	if err := c.ShouldBindJSON(&target); err != nil {
-		resp.RespondBindingError(c, err)
+		response.RespondBindingError(c, err)
 		return
 	}
 	err = h.svc.Update(c.Request.Context(), target.ID, &target, loginUserID)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
-	resp.RespondOK(c, nil)
+	response.RespondOK(c, nil)
 }
 
 // MatchUsers
@@ -162,30 +163,30 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Produce  json
 // @Security SessionAuth
 // @Param    num query    int true "推荐数量" minimum(1) maximum(20)
-// @Success  200 {object} resp.Response{data=[]user.User}
-// @Failure  400 {object} resp.Response
+// @Success  200 {object} response.Response{data=[]user.User}
+// @Failure  400 {object} response.Response
 // @Router   /user/match [get]
-func (h *UserHandler) MatchUsers(c *gin.Context) {
+func (h *Handler) MatchUsers(c *gin.Context) {
 	numStr := c.Query("num")
 	num, err := strconv.Atoi(numStr)
 	if err != nil || num <= 0 || num > 20 {
-		resp.RespondError(c, resp.NewBizErrorWithDetail(resp.ParamsError, "num 需在 1-20 之间"))
+		response.RespondError(c, response.NewBizErrorWithDetail(response.ParamsError, "num 需在 1-20 之间"))
 		return
 	}
 	loginUserID, err := middleware.GetLoginUserID(c)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
 	loginUser, err := h.svc.GetByID(c.Request.Context(), loginUserID)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
 	users, err := h.svc.MatchUsers(c.Request.Context(), num, loginUser)
 	if err != nil {
-		resp.RespondError(c, err)
+		response.RespondError(c, err)
 		return
 	}
-	resp.RespondOK(c, users)
+	response.RespondOK(c, users)
 }

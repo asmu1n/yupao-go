@@ -3,20 +3,22 @@ package middleware
 import (
 	"net/http"
 
-	"yupao-go/internal/shared/resp"
+	"yupao-go/internal/pkg/response"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
+// SessionKeyUserID session / context 中存放登录用户 ID 的键。
 const SessionKeyUserID = "userID"
 
+// AuthRequired 要求请求已登录，否则返回 401。
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		uid := session.Get(SessionKeyUserID)
 		if uid == nil {
-			c.JSON(http.StatusUnauthorized, resp.FailWithCode(resp.NotLogin, ""))
+			c.JSON(http.StatusUnauthorized, response.FailWithCode(response.NotLogin, ""))
 			c.Abort()
 			return
 		}
@@ -25,14 +27,15 @@ func AuthRequired() gin.HandlerFunc {
 	}
 }
 
+// GetLoginUserID 从请求上下文读取当前登录用户 ID。
 func GetLoginUserID(c *gin.Context) (int64, error) {
 	uid, exists := c.Get(SessionKeyUserID)
 	if !exists {
-		return 0, resp.NewBizError(resp.NotLogin)
+		return 0, response.NewBizError(response.NotLogin)
 	}
 	id, ok := uid.(int64)
 	if !ok {
-		return 0, resp.NewBizError(resp.NotLogin)
+		return 0, response.NewBizError(response.NotLogin)
 	}
 	return id, nil
 }

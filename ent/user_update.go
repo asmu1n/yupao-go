@@ -9,7 +9,7 @@ import (
 	"time"
 	"yupao-go/ent/predicate"
 	"yupao-go/ent/user"
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/types"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -84,14 +84,14 @@ func (_u *UserUpdate) ClearAvatarURL() *UserUpdate {
 }
 
 // SetGender sets the "gender" field.
-func (_u *UserUpdate) SetGender(v usertype.Gender) *UserUpdate {
+func (_u *UserUpdate) SetGender(v types.Gender) *UserUpdate {
 	_u.mutation.ResetGender()
 	_u.mutation.SetGender(v)
 	return _u
 }
 
 // SetNillableGender sets the "gender" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableGender(v *usertype.Gender) *UserUpdate {
+func (_u *UserUpdate) SetNillableGender(v *types.Gender) *UserUpdate {
 	if v != nil {
 		_u.SetGender(*v)
 	}
@@ -99,7 +99,7 @@ func (_u *UserUpdate) SetNillableGender(v *usertype.Gender) *UserUpdate {
 }
 
 // AddGender adds value to the "gender" field.
-func (_u *UserUpdate) AddGender(v usertype.Gender) *UserUpdate {
+func (_u *UserUpdate) AddGender(v types.Gender) *UserUpdate {
 	_u.mutation.AddGender(v)
 	return _u
 }
@@ -514,14 +514,14 @@ func (_u *UserUpdateOne) ClearAvatarURL() *UserUpdateOne {
 }
 
 // SetGender sets the "gender" field.
-func (_u *UserUpdateOne) SetGender(v usertype.Gender) *UserUpdateOne {
+func (_u *UserUpdateOne) SetGender(v types.Gender) *UserUpdateOne {
 	_u.mutation.ResetGender()
 	_u.mutation.SetGender(v)
 	return _u
 }
 
 // SetNillableGender sets the "gender" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableGender(v *usertype.Gender) *UserUpdateOne {
+func (_u *UserUpdateOne) SetNillableGender(v *types.Gender) *UserUpdateOne {
 	if v != nil {
 		_u.SetGender(*v)
 	}
@@ -529,7 +529,7 @@ func (_u *UserUpdateOne) SetNillableGender(v *usertype.Gender) *UserUpdateOne {
 }
 
 // AddGender adds value to the "gender" field.
-func (_u *UserUpdateOne) AddGender(v usertype.Gender) *UserUpdateOne {
+func (_u *UserUpdateOne) AddGender(v types.Gender) *UserUpdateOne {
 	_u.mutation.AddGender(v)
 	return _u
 }

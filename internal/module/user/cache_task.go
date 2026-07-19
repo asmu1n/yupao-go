@@ -5,25 +5,36 @@ import (
 	"log"
 	"sync"
 	"time"
-	"yupao-go/internal/infra/lock"
+
+	"yupao-go/internal/port"
 )
 
+const (
+	// lockTTL 预热分布式锁过期时间，应覆盖单次任务最坏耗时。
+	lockTTL = 10 * time.Minute
+	// lockKey 预热任务在 Redis 中的分布式锁 key。
+	lockKey = "lock:cron:warmup_match_users"
+)
+
+// warmUpNums 预热时优先填充的推荐数量；与接口常见取值对齐，其余 num 走在线懒加载。
+var warmUpNums = []int{10, 20}
+
+// WarmUpMatchUsers 定时预热匹配缓存的入口。
+// 通过分布式锁保证多实例下仅一个节点执行；抢锁失败则静默跳过。
 func (s *Service) WarmUpMatchUsers(ctx context.Context) {
-	if s.cache == nil {
+	if s.cache == nil || s.locker == nil {
 		return
 	}
 
-	// 使用刚刚封装的 RunWithLock，代码变得极其清爽
+	// 尝试从 redis 获取分布式锁
 	err := s.locker.RunWithLock(ctx, lockKey, lockTTL, func() error {
 		log.Println("[Cron] 成功抢到分布式锁，开始执行预热...")
-
 		s.warmUpMatchTask(ctx)
-
 		return nil
 	})
 
 	// 错误处理：如果没有抢到锁，就静默忽略
-	if err == lock.ErrLockFailed {
+	if err == port.ErrLockFailed {
 		log.Println("[Cron] 其他节点正在执行预热，当前节点主动跳过")
 		return
 	} else if err != nil {
@@ -31,16 +42,16 @@ func (s *Service) WarmUpMatchUsers(ctx context.Context) {
 	}
 }
 
-// 分批获取用户进行缓存预热
+// warmUpMatchTask 加载活跃候选池，并对其中用户并发预热匹配缓存。
+// 候选池与在线 MatchUsers 相同，保证写入 key 的语义一致。
 func (s *Service) warmUpMatchTask(ctx context.Context) {
-
 	s.warmUpLock.Lock()
 	defer s.warmUpLock.Unlock()
 
 	log.Println("开始预热匹配用户缓存")
-	activeSince := time.Now().Add(-matchCacheTTL)
 
-	candidates, err := s.listAllActiveMatchCandidates(ctx, activeSince)
+	// 与 MatchUsers miss 路径共用 loadMatchCandidates，避免候选集分叉。
+	candidates, err := s.loadMatchCandidates(ctx)
 	if err != nil {
 		log.Printf("预热匹配用户缓存失败，加载活跃用户失败: %v", err)
 		return
@@ -81,18 +92,21 @@ func (s *Service) warmUpMatchTask(ctx context.Context) {
 		return
 	}
 	log.Printf("预热匹配用户缓存结束: 用户数=%d", len(candidates))
-
 }
 
+// warmUpSingleUser 为单个用户补齐常见 num 的匹配缓存（仅填冷 key，不强制刷新）。
 func (s *Service) warmUpSingleUser(ctx context.Context, loginUser *User, candidates []*User) {
 	if len(loginUser.ParseTags()) == 0 {
 		return
 	}
 
-	nums := []int{10, 20}
-	for _, num := range nums {
+	for _, num := range warmUpNums {
+		if ctx.Err() != nil {
+			return
+		}
 		key := matchCacheKey(loginUser.ID, num)
 		var dst []*User
+		// Once：仅补冷 key；计算结果与在线 matchUsers 同源（同一 candidates）。
 		err := s.cache.Once(ctx, key, matchCacheTTL, &dst, func() (any, error) {
 			return s.matchUsersFromCandidates(ctx, num, loginUser, candidates)
 		})
@@ -100,10 +114,9 @@ func (s *Service) warmUpSingleUser(ctx context.Context, loginUser *User, candida
 			log.Printf("预热匹配缓存失败 key=%s: %v", key, err)
 		}
 	}
-
 }
 
-// 无效化匹配缓存
+// invalidateMatchCache 用户资料变更后删除其全部匹配缓存（num = 1..maxMatchNum）。
 func (s *Service) invalidateMatchCache(ctx context.Context, userID int64) {
 	if s.cache == nil {
 		return

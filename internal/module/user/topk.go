@@ -2,6 +2,7 @@ package user
 
 import "container/heap"
 
+// scoredUser 匹配打分中间结构：用户 ID 与标签编辑距离。
 type scoredUser struct {
 	userID   int64
 	distance int
@@ -29,6 +30,7 @@ func (h *maxHeap) Pop() any {
 	return item
 }
 
+// topKNearest 从候选中选出编辑距离最小的 num 个用户 ID（距离升序）。
 func topKNearest(candidates []scoredUser, num int) []int64 {
 	if num <= 0 {
 		return nil

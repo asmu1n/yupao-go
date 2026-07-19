@@ -1,4 +1,4 @@
-package usertype
+package types
 
 import "fmt"
 

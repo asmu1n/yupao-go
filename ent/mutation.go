@@ -10,7 +10,7 @@ import (
 	"time"
 	"yupao-go/ent/predicate"
 	"yupao-go/ent/user"
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/types"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -37,8 +37,8 @@ type UserMutation struct {
 	username       *string
 	user_account   *string
 	avatar_url     *string
-	gender         *usertype.Gender
-	addgender      *usertype.Gender
+	gender         *types.Gender
+	addgender      *types.Gender
 	user_password  *string
 	phone          *string
 	email          *string
@@ -297,13 +297,13 @@ func (m *UserMutation) ResetAvatarURL() {
 }
 
 // SetGender sets the "gender" field.
-func (m *UserMutation) SetGender(u usertype.Gender) {
-	m.gender = &u
+func (m *UserMutation) SetGender(t types.Gender) {
+	m.gender = &t
 	m.addgender = nil
 }
 
 // Gender returns the value of the "gender" field in the mutation.
-func (m *UserMutation) Gender() (r usertype.Gender, exists bool) {
+func (m *UserMutation) Gender() (r types.Gender, exists bool) {
 	v := m.gender
 	if v == nil {
 		return
@@ -314,7 +314,7 @@ func (m *UserMutation) Gender() (r usertype.Gender, exists bool) {
 // OldGender returns the old "gender" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldGender(ctx context.Context) (v *usertype.Gender, err error) {
+func (m *UserMutation) OldGender(ctx context.Context) (v *types.Gender, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldGender is only allowed on UpdateOne operations")
 	}
@@ -328,17 +328,17 @@ func (m *UserMutation) OldGender(ctx context.Context) (v *usertype.Gender, err e
 	return oldValue.Gender, nil
 }
 
-// AddGender adds u to the "gender" field.
-func (m *UserMutation) AddGender(u usertype.Gender) {
+// AddGender adds t to the "gender" field.
+func (m *UserMutation) AddGender(t types.Gender) {
 	if m.addgender != nil {
-		*m.addgender += u
+		*m.addgender += t
 	} else {
-		m.addgender = &u
+		m.addgender = &t
 	}
 }
 
 // AddedGender returns the value that was added to the "gender" field in this mutation.
-func (m *UserMutation) AddedGender() (r usertype.Gender, exists bool) {
+func (m *UserMutation) AddedGender() (r types.Gender, exists bool) {
 	v := m.addgender
 	if v == nil {
 		return
@@ -1006,7 +1006,7 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		m.SetAvatarURL(v)
 		return nil
 	case user.FieldGender:
-		v, ok := value.(usertype.Gender)
+		v, ok := value.(types.Gender)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -1128,7 +1128,7 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 func (m *UserMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case user.FieldGender:
-		v, ok := value.(usertype.Gender)
+		v, ok := value.(types.Gender)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

@@ -9,36 +9,41 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"yupao-go/internal/algo"
-	"yupao-go/internal/infra/cache"
-	"yupao-go/internal/infra/lock"
-	"yupao-go/internal/shared/resp"
+	"yupao-go/internal/port"
+	"yupao-go/internal/pkg/response"
 )
 
 var validAccountPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
 const (
+	// matchCacheTTL 匹配结果缓存过期时间。
 	matchCacheTTL = 60 * time.Minute
-	lockTTL       = 10 * time.Minute
-	lockKey       = "lock:cron:warmup_match_users"
-	maxMatchNum   = 20
+	// matchActiveWindow 在线匹配与预热共用的活跃候选窗口。
+	// 仅在该时间范围内有更新、状态正常且带 tags 的用户会进入匹配池。
+	matchActiveWindow = 7 * 24 * time.Hour
+	// maxMatchNum 匹配接口允许的最大推荐数量。
+	maxMatchNum = 20
+	// warmBatchSize 游标分批加载活跃用户时的每批大小。
 	warmBatchSize = 200
-	warmWorkers   = 4
+	// warmWorkers 预热任务并发 worker 数。
+	warmWorkers = 4
 )
 
 type Service struct {
 	repo  Repository
-	cache cache.Cache
-	// 缓存预热锁
+	cache port.Cache
+	// warmUpLock 进程内预热互斥，防止同进程重复执行预热。
 	warmUpLock sync.Mutex
-	// 分布式锁
-	locker lock.Locker
+	// locker 分布式锁，多实例下保证预热任务互斥。
+	locker port.Locker
 }
 
-func NewService(repo Repository, cache cache.Cache, locker lock.Locker) *Service {
-	return &Service{repo: repo, cache: cache, locker: locker}
+// NewService 构造用户领域服务。
+func NewService(repo Repository, c port.Cache, locker port.Locker) *Service {
+	return &Service{repo: repo, cache: c, locker: locker}
 }
 
+// matchCacheKey 生成匹配结果缓存 key：yupao:match:{userID}:{num}。
 func matchCacheKey(userID int64, num int) string {
 	return fmt.Sprintf("yupao:match:%d:%d", userID, num)
 }
@@ -46,7 +51,7 @@ func matchCacheKey(userID int64, num int) string {
 // Register 用户注册，校验参数 + 查重 + bcrypt 加密后入库，返回新用户 ID
 func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error) {
 	if !validAccountPattern.MatchString(p.UserAccount) {
-		return 0, resp.NewBizErrorWithDetail(resp.ParamsError, "账号包含特殊字符")
+		return 0, response.NewBizErrorWithDetail(response.ParamsError, "账号包含特殊字符")
 	}
 
 	exists, err := s.repo.ExistsByAccount(ctx, p.UserAccount)
@@ -54,7 +59,7 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 		return 0, err
 	}
 	if exists {
-		return 0, resp.NewBizErrorWithDetail(resp.ParamsError, "账号重复")
+		return 0, response.NewBizErrorWithDetail(response.ParamsError, "账号重复")
 	}
 
 	exists, err = s.repo.ExistsByPlanetCode(ctx, p.PlanetCode)
@@ -62,12 +67,12 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 		return 0, err
 	}
 	if exists {
-		return 0, resp.NewBizErrorWithDetail(resp.ParamsError, "编号重复")
+		return 0, response.NewBizErrorWithDetail(response.ParamsError, "编号重复")
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(p.UserPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return 0, resp.NewBizErrorWithDetail(resp.SystemError, "密码加密失败")
+		return 0, response.NewBizErrorWithDetail(response.SystemError, "密码加密失败")
 	}
 
 	u := &User{
@@ -81,7 +86,7 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 // Login 用户登录，校验账号密码后返回脱敏用户信息
 func (s *Service) Login(ctx context.Context, account, password string) (*User, error) {
 	if !validAccountPattern.MatchString(account) {
-		return nil, resp.NewBizErrorWithDetail(resp.ParamsError, "账号包含特殊字符")
+		return nil, response.NewBizErrorWithDetail(response.ParamsError, "账号包含特殊字符")
 	}
 
 	u, err := s.repo.GetByAccount(ctx, account)
@@ -89,11 +94,11 @@ func (s *Service) Login(ctx context.Context, account, password string) (*User, e
 		return nil, err
 	}
 	if u == nil {
-		return nil, resp.NewBizErrorWithDetail(resp.ParamsError, "账号或密码错误")
+		return nil, response.NewBizErrorWithDetail(response.ParamsError, "账号或密码错误")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)); err != nil {
-		return nil, resp.NewBizErrorWithDetail(resp.ParamsError, "账号或密码错误")
+		return nil, response.NewBizErrorWithDetail(response.ParamsError, "账号或密码错误")
 	}
 
 	return u, nil
@@ -106,7 +111,7 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
 		return nil, err
 	}
 	if u == nil {
-		return nil, resp.NewBizError(resp.NotFound)
+		return nil, response.NewBizError(response.NotFound)
 	}
 	return u, nil
 }
@@ -118,15 +123,15 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 		return err
 	}
 	if caller == nil {
-		return resp.NewBizError(resp.NotFound)
+		return response.NewBizError(response.NotFound)
 	}
 	isAdmin := s.isAdmin(caller)
 
 	if targetID <= 0 {
-		return resp.NewBizError(resp.ParamsError)
+		return response.NewBizError(response.ParamsError)
 	}
 	if !isAdmin && targetID != callerID {
-		return resp.NewBizError(resp.NoAuth)
+		return response.NewBizError(response.NoAuth)
 	}
 
 	old, err := s.repo.GetByID(ctx, targetID)
@@ -134,7 +139,7 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 		return err
 	}
 	if old == nil {
-		return resp.NewBizError(resp.NotFound)
+		return response.NewBizError(response.NotFound)
 	}
 
 	if err := s.repo.Update(ctx, targetID, u); err != nil {
@@ -148,7 +153,7 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 // SearchByTags 根据标签列表搜索用户，内存过滤匹配所有标签的用户
 func (s *Service) SearchByTags(ctx context.Context, tagNames []string) ([]*User, error) {
 	if len(tagNames) == 0 {
-		return nil, resp.NewBizError(resp.ParamsError)
+		return nil, response.NewBizError(response.ParamsError)
 	}
 
 	users, err := s.repo.ListAll(ctx)
@@ -174,7 +179,8 @@ func (s *Service) SearchByTags(ctx context.Context, tagNames []string) ([]*User,
 	return result, nil
 }
 
-// MatchUsers 基于标签编辑距离推荐最相似的 num 个用户
+// MatchUsers 基于标签编辑距离，在活跃候选池中推荐最相似的 num 个用户。
+// 优先读缓存；miss 时走 matchUsers 计算并回填。候选池与预热一致，见 loadMatchCandidates。
 func (s *Service) MatchUsers(ctx context.Context, num int, loginUser *User) ([]*User, error) {
 	if len(loginUser.ParseTags()) == 0 {
 		return nil, nil
@@ -184,12 +190,18 @@ func (s *Service) MatchUsers(ctx context.Context, num int, loginUser *User) ([]*
 		return s.matchUsers(ctx, num, loginUser)
 	}
 
-	return cache.TryFetch(ctx, s.cache, matchCacheKey(loginUser.ID, num), matchCacheTTL, func() ([]*User, error) {
+	return port.TryFetch(ctx, s.cache, matchCacheKey(loginUser.ID, num), matchCacheTTL, func() ([]*User, error) {
 		return s.matchUsers(ctx, num, loginUser)
 	})
 }
 
-// 分批获取所有活跃用户（采取游标策略）
+// loadMatchCandidates 加载匹配候选池（在线与预热共用，保证缓存语义一致）。
+func (s *Service) loadMatchCandidates(ctx context.Context) ([]*User, error) {
+	activeSince := time.Now().Add(-matchActiveWindow)
+	return s.listAllActiveMatchCandidates(ctx, activeSince)
+}
+
+// listAllActiveMatchCandidates 按 ID 游标分批拉取活跃匹配候选，避免一次全表加载。
 func (s *Service) listAllActiveMatchCandidates(ctx context.Context, activeSince time.Time) ([]*User, error) {
 	afterID := int64(0)
 	all := make([]*User, 0, warmBatchSize)
@@ -216,14 +228,17 @@ func (s *Service) listAllActiveMatchCandidates(ctx context.Context, activeSince 
 	return all, nil
 }
 
+// matchUsers 缓存 miss 时的计算入口：加载候选池后执行匹配算法。
 func (s *Service) matchUsers(ctx context.Context, num int, loginUser *User) ([]*User, error) {
-	users, err := s.repo.ListAll(ctx)
+	candidates, err := s.loadMatchCandidates(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.matchUsersFromCandidates(ctx, num, loginUser, users)
+	return s.matchUsersFromCandidates(ctx, num, loginUser, candidates)
 }
 
+// matchUsersFromCandidates 在给定候选池内按标签编辑距离选出最近的 num 个用户。
+// 在线 miss 与预热均调用此函数，保证同一 candidates 下结果一致。
 func (s *Service) matchUsersFromCandidates(ctx context.Context, num int, loginUser *User, candidates []*User) ([]*User, error) {
 	loginTags := loginUser.ParseTags()
 
@@ -238,7 +253,7 @@ func (s *Service) matchUsersFromCandidates(ctx context.Context, num int, loginUs
 		}
 		scoredCandidates = append(scoredCandidates, scoredUser{
 			userID:   u.ID,
-			distance: algo.MinDistance(loginTags, uTags),
+			distance: minDistance(loginTags, uTags),
 		})
 	}
 

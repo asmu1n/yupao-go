@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"yupao-go/internal/shared/usertype"
+	"yupao-go/internal/pkg/types"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -33,7 +33,7 @@ const (
 var (
 	surnames   = []rune("赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻")
 	givenChars = []rune("伟芳娜秀英敏静丽强磊军洋勇艳杰娟涛明超霞平刚桂华建文志鹏飞燕玲凤云梅雪龙")
-	genders    = []usertype.Gender{usertype.GenderMale, usertype.GenderFemale}
+	genders    = []types.Gender{types.GenderMale, types.GenderFemale}
 	tagPool    = []string{
 		"Go", "Java", "Python", "JavaScript", "TypeScript", "React", "Vue",
 		"Angular", "Node", "Rust", "C++", "C#", "Ruby", "PHP", "Swift",
