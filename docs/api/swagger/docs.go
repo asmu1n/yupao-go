@@ -848,7 +848,7 @@ const docTemplate = `{
                     "maxLength": 32
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 }
             }
         },
@@ -910,7 +910,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 },
                 "updateTime": {
                     "type": "string"
@@ -952,7 +952,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 },
                 "updateTime": {
                     "type": "string"
@@ -987,7 +987,7 @@ const docTemplate = `{
                     "maxLength": 32
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 }
             }
         },
@@ -1001,6 +1001,29 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "GenderMale",
                 "GenderFemale"
+            ]
+        },
+        "types.TeamStatus": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-comments": {
+                "TeamStatusPrivate": "私有",
+                "TeamStatusPublic": "公开",
+                "TeamStatusSecret": "加密"
+            },
+            "x-enum-descriptions": [
+                "公开",
+                "私有",
+                "加密"
+            ],
+            "x-enum-varnames": [
+                "TeamStatusPublic",
+                "TeamStatusPrivate",
+                "TeamStatusSecret"
             ]
         },
         "user.LoginParams": {
