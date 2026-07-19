@@ -123,7 +123,6 @@ func (s *Service) List(ctx context.Context, q QueryParams, loginUserID int64, is
 	return s.toTeamUserVOs(ctx, teams, loginUserID)
 }
 
-// ListPage 分页查询队伍实体（管理/简单列表，不含 VO  enrichment）。
 func (s *Service) ListPage(ctx context.Context, q QueryParams) (*page.PageResponse[*Team], error) {
 	rows, total, err := s.repo.ListPage(ctx, q)
 	if err != nil {
@@ -132,7 +131,7 @@ func (s *Service) ListPage(ctx context.Context, q QueryParams) (*page.PageRespon
 	return page.NewPageResponse(rows, total, q.PageRequest), nil
 }
 
-// ListMyCreate 我创建的队伍。
+// 检索自己创建的队伍
 func (s *Service) ListMyCreate(ctx context.Context, q QueryParams, loginUserID int64) ([]*TeamUserVO, error) {
 	if loginUserID <= 0 {
 		return nil, response.NewBizError(response.NotLogin)
@@ -147,7 +146,7 @@ func (s *Service) ListMyCreate(ctx context.Context, q QueryParams, loginUserID i
 	return s.toTeamUserVOs(ctx, teams, loginUserID)
 }
 
-// ListMyJoin 我加入的队伍。
+// 检索自己所属的队伍
 func (s *Service) ListMyJoin(ctx context.Context, q QueryParams, loginUserID int64) ([]*TeamUserVO, error) {
 	if loginUserID <= 0 {
 		return nil, response.NewBizError(response.NotLogin)
