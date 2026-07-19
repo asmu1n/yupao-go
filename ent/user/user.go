@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -41,8 +42,26 @@ const (
 	FieldPlanetCode = "planet_code"
 	// FieldTags holds the string denoting the tags field in the database.
 	FieldTags = "tags"
+	// EdgeLedTeams holds the string denoting the led_teams edge name in mutations.
+	EdgeLedTeams = "led_teams"
+	// EdgeTeamMemberships holds the string denoting the team_memberships edge name in mutations.
+	EdgeTeamMemberships = "team_memberships"
 	// Table holds the table name of the user in the database.
 	Table = "user"
+	// LedTeamsTable is the table that holds the led_teams relation/edge.
+	LedTeamsTable = "team"
+	// LedTeamsInverseTable is the table name for the Team entity.
+	// It exists in this package in order to avoid circular dependency with the "team" package.
+	LedTeamsInverseTable = "team"
+	// LedTeamsColumn is the table column denoting the led_teams relation/edge.
+	LedTeamsColumn = "user_id"
+	// TeamMembershipsTable is the table that holds the team_memberships relation/edge.
+	TeamMembershipsTable = "user_team"
+	// TeamMembershipsInverseTable is the table name for the UserTeam entity.
+	// It exists in this package in order to avoid circular dependency with the "userteam" package.
+	TeamMembershipsInverseTable = "user_team"
+	// TeamMembershipsColumn is the table column denoting the team_memberships relation/edge.
+	TeamMembershipsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -185,4 +204,46 @@ func ByPlanetCode(opts ...sql.OrderTermOption) OrderOption {
 // ByTags orders the results by the tags field.
 func ByTags(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTags, opts...).ToFunc()
+}
+
+// ByLedTeamsCount orders the results by led_teams count.
+func ByLedTeamsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newLedTeamsStep(), opts...)
+	}
+}
+
+// ByLedTeams orders the results by led_teams terms.
+func ByLedTeams(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLedTeamsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByTeamMembershipsCount orders the results by team_memberships count.
+func ByTeamMembershipsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTeamMembershipsStep(), opts...)
+	}
+}
+
+// ByTeamMemberships orders the results by team_memberships terms.
+func ByTeamMemberships(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTeamMembershipsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newLedTeamsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LedTeamsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, LedTeamsTable, LedTeamsColumn),
+	)
+}
+func newTeamMembershipsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TeamMembershipsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TeamMembershipsTable, TeamMembershipsColumn),
+	)
 }

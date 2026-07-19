@@ -1,0 +1,665 @@
+basePath: /api
+definitions:
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  team.AddParams:
+    properties:
+      description:
+        maxLength: 512
+        type: string
+      expireTime:
+        type: string
+      maxNum:
+        maximum: 20
+        minimum: 1
+        type: integer
+      name:
+        maxLength: 20
+        type: string
+      password:
+        maxLength: 32
+        type: string
+      status:
+        type: integer
+    required:
+    - expireTime
+    - maxNum
+    - name
+    type: object
+  team.DeleteParams:
+    properties:
+      id:
+        type: integer
+    required:
+    - id
+    type: object
+  team.JoinParams:
+    properties:
+      password:
+        type: string
+      teamId:
+        type: integer
+    required:
+    - teamId
+    type: object
+  team.QuitParams:
+    properties:
+      teamId:
+        type: integer
+    required:
+    - teamId
+    type: object
+  team.Team:
+    properties:
+      createTime:
+        type: string
+      description:
+        type: string
+      expireTime:
+        type: string
+      id:
+        type: integer
+      maxNum:
+        type: integer
+      name:
+        type: string
+      status:
+        type: integer
+      updateTime:
+        type: string
+      userId:
+        description: 队长
+        type: integer
+    type: object
+  team.TeamUserVO:
+    properties:
+      createTime:
+        type: string
+      createUser:
+        $ref: '#/definitions/user.User'
+      description:
+        type: string
+      expireTime:
+        type: string
+      hasJoin:
+        type: boolean
+      hasJoinNum:
+        type: integer
+      id:
+        type: integer
+      maxNum:
+        type: integer
+      name:
+        type: string
+      status:
+        type: integer
+      updateTime:
+        type: string
+      userId:
+        type: integer
+    type: object
+  team.UpdateParams:
+    properties:
+      description:
+        maxLength: 512
+        type: string
+      expireTime:
+        type: string
+      id:
+        type: integer
+      name:
+        maxLength: 20
+        type: string
+      password:
+        maxLength: 32
+        type: string
+      status:
+        type: integer
+    required:
+    - id
+    type: object
+  types.Gender:
+    enum:
+    - 1
+    - 2
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - GenderMale
+    - GenderFemale
+  user.LoginParams:
+    properties:
+      userAccount:
+        minLength: 4
+        type: string
+      userPassword:
+        minLength: 8
+        type: string
+    required:
+    - userAccount
+    - userPassword
+    type: object
+  user.RegisterParams:
+    properties:
+      checkPassword:
+        minLength: 8
+        type: string
+      planetCode:
+        maxLength: 20
+        type: string
+      userAccount:
+        maxLength: 256
+        minLength: 4
+        type: string
+      userPassword:
+        minLength: 8
+        type: string
+    required:
+    - checkPassword
+    - planetCode
+    - userAccount
+    - userPassword
+    type: object
+  user.User:
+    properties:
+      avatarUrl:
+        type: string
+      createTime:
+        type: string
+      email:
+        type: string
+      gender:
+        $ref: '#/definitions/types.Gender'
+      id:
+        type: integer
+      phone:
+        type: string
+      planetCode:
+        type: string
+      tags:
+        type: string
+      userAccount:
+        type: string
+      userRole:
+        type: integer
+      userStatus:
+        type: integer
+      username:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 伙伴匹配系统后端接口文档
+  title: Yupao Go API
+  version: "1.0"
+paths:
+  /team/add:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.AddParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  format: int64
+                  type: integer
+              type: object
+      security:
+      - SessionAuth: []
+      summary: 创建队伍
+      tags:
+      - team
+  /team/delete:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 解散参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.DeleteParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      security:
+      - SessionAuth: []
+      summary: 解散队伍
+      tags:
+      - team
+  /team/get:
+    get:
+      parameters:
+      - description: 队伍 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/team.Team'
+              type: object
+      summary: 根据 ID 获取队伍
+      tags:
+      - team
+  /team/join:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 加入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.JoinParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      security:
+      - SessionAuth: []
+      summary: 加入队伍
+      tags:
+      - team
+  /team/list:
+    get:
+      parameters:
+      - description: 关键词
+        in: query
+        name: searchText
+        type: string
+      - description: 状态
+        in: query
+        name: status
+        type: integer
+      - description: 名称
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/team.TeamUserVO'
+                  type: array
+              type: object
+      summary: 队伍列表
+      tags:
+      - team
+  /team/list/my/create:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/team.TeamUserVO'
+                  type: array
+              type: object
+      security:
+      - SessionAuth: []
+      summary: 我创建的队伍
+      tags:
+      - team
+  /team/list/my/join:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/team.TeamUserVO'
+                  type: array
+              type: object
+      security:
+      - SessionAuth: []
+      summary: 我加入的队伍
+      tags:
+      - team
+  /team/list/page:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: pageNum
+        type: integer
+      - description: 页大小
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 队伍分页列表
+      tags:
+      - team
+  /team/quit:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 退出参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.QuitParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      security:
+      - SessionAuth: []
+      summary: 退出队伍
+      tags:
+      - team
+  /team/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 更新参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.UpdateParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      security:
+      - SessionAuth: []
+      summary: 更新队伍
+      tags:
+      - team
+  /user/current:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.User'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: 获取当前登录用户
+      tags:
+      - user
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      description: 用户登录接口，成功后写入 session cookie
+      parameters:
+      - description: 登录参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户登录
+      tags:
+      - user
+  /user/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: 用户注销
+      tags:
+      - user
+  /user/match:
+    get:
+      parameters:
+      - description: 推荐数量
+        in: query
+        maximum: 20
+        minimum: 1
+        name: num
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/user.User'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: 匹配相似用户
+      tags:
+      - user
+  /user/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 注册参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.RegisterParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  format: int64
+                  type: integer
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户注册
+      tags:
+      - user
+  /user/search/tags:
+    get:
+      parameters:
+      - collectionFormat: csv
+        description: 标签列表
+        in: query
+        items:
+          type: string
+        name: tagNameList
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/user.User'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: 根据标签搜索用户
+      tags:
+      - user
+  /user/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/user.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: 更新用户信息
+      tags:
+      - user
+securityDefinitions:
+  SessionAuth:
+    description: 'Session cookie authentication. Example: session=your-session-id'
+    in: header
+    name: Cookie
+    type: apiKey
+swagger: "2.0"

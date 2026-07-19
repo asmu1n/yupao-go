@@ -14,6 +14,8 @@ import (
 	"yupao-go/internal/infra/lock"
 	"yupao-go/internal/infra/redis"
 	"yupao-go/internal/infra/scheduler"
+	"yupao-go/internal/module/team"
+	teamrepo "yupao-go/internal/module/team/repo"
 	"yupao-go/internal/module/user"
 	userrepo "yupao-go/internal/module/user/repo"
 
@@ -22,7 +24,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "yupao-go/api/swagger"
+	_ "yupao-go/docs/api/swagger"
 )
 
 // @title           Yupao Go API
@@ -65,6 +67,7 @@ func main() {
 	locker := lock.New(redisClient)
 	cacheClient := cache.New(redisClient)
 	userSvc := user.NewService(userrepo.New(db.Client), cacheClient, locker)
+	teamSvc := team.NewService(teamrepo.New(db.Client), userSvc, locker)
 
 	// 初始化定时调度器
 	sched := scheduler.New()
@@ -91,7 +94,7 @@ func main() {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	httpapi.RegisterRouter(r, userSvc)
+	httpapi.RegisterRouter(r, userSvc, teamSvc)
 
 	log.Fatal(r.Run(":8080"))
 }

@@ -30,12 +30,14 @@ yupao-go/
 │   └── schema/          # 手写 ent schema（改表结构只动这里，再 generate）
 ├── internal/
 │   ├── module/          # ★ 业务模块（按领域垂直切片）
-│   │   └── user/        # 用户：注册登录、标签搜索、匹配与缓存预热
-│   │       ├── http/    # Handler（Gin，无业务规则）
-│   │       ├── repo/    # ent 仓储实现
-│   │       ├── service.go / model.go / repository.go
-│   │       ├── cache_task.go / distance.go / topk.go
-│   │       └── CACHE.md # 匹配缓存策略说明
+│   │   ├── user/        # 用户：注册登录、标签搜索、匹配与缓存预热
+│   │   │   ├── http/    # Handler
+│   │   │   ├── repo/
+│   │   │   └── …        # service / match / CACHE.md
+│   │   └── team/        # 队伍：创建/加入/退出/解散/列表
+│   │       ├── http/
+│   │       ├── repo/
+│   │       └── …
 │   ├── httpapi/         # 路由注册、鉴权中间件
 │   ├── port/            # 跨模块技术端口（Cache、Locker）
 │   ├── infra/           # 基础设施实现（DB、Redis、缓存、锁、定时器）

@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"yupao-go/ent/team"
 	"yupao-go/ent/user"
+	"yupao-go/ent/userteam"
 	"yupao-go/internal/pkg/types"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -197,6 +199,36 @@ func (_c *UserCreate) SetNillableTags(v *string) *UserCreate {
 func (_c *UserCreate) SetID(v int64) *UserCreate {
 	_c.mutation.SetID(v)
 	return _c
+}
+
+// AddLedTeamIDs adds the "led_teams" edge to the Team entity by IDs.
+func (_c *UserCreate) AddLedTeamIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddLedTeamIDs(ids...)
+	return _c
+}
+
+// AddLedTeams adds the "led_teams" edges to the Team entity.
+func (_c *UserCreate) AddLedTeams(v ...*Team) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddLedTeamIDs(ids...)
+}
+
+// AddTeamMembershipIDs adds the "team_memberships" edge to the UserTeam entity by IDs.
+func (_c *UserCreate) AddTeamMembershipIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddTeamMembershipIDs(ids...)
+	return _c
+}
+
+// AddTeamMemberships adds the "team_memberships" edges to the UserTeam entity.
+func (_c *UserCreate) AddTeamMemberships(v ...*UserTeam) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTeamMembershipIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -419,6 +451,38 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Tags(); ok {
 		_spec.SetField(user.FieldTags, field.TypeString, value)
 		_node.Tags = value
+	}
+	if nodes := _c.mutation.LedTeamsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.LedTeamsTable,
+			Columns: []string{user.LedTeamsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(team.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TeamMembershipsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TeamMembershipsTable,
+			Columns: []string{user.TeamMembershipsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userteam.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

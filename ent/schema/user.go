@@ -8,6 +8,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -76,5 +77,10 @@ func (User) Fields() []ent.Field {
 }
 
 func (User) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		// 作为队长创建的队伍（team.user_id → user.id）
+		edge.To("led_teams", Team.Type),
+		// 加入的队伍关系（user_team.user_id → user.id）
+		edge.To("team_memberships", UserTeam.Type),
+	}
 }

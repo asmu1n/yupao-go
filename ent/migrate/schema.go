@@ -9,6 +9,46 @@ import (
 )
 
 var (
+	// TeamColumns holds the columns for the "team" table.
+	TeamColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "name", Type: field.TypeString, Size: 256},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 1024},
+		{Name: "max_num", Type: field.TypeInt, Default: 1},
+		{Name: "expire_time", Type: field.TypeTime, Nullable: true},
+		{Name: "status", Type: field.TypeInt, Default: 0},
+		{Name: "password", Type: field.TypeString, Nullable: true, Size: 512},
+		{Name: "create_time", Type: field.TypeTime},
+		{Name: "update_time", Type: field.TypeTime},
+		{Name: "is_delete", Type: field.TypeInt8, Default: 0},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// TeamTable holds the schema information for the "team" table.
+	TeamTable = &schema.Table{
+		Name:       "team",
+		Columns:    TeamColumns,
+		PrimaryKey: []*schema.Column{TeamColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "team_user_led_teams",
+				Columns:    []*schema.Column{TeamColumns[10]},
+				RefColumns: []*schema.Column{UserColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "team_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{TeamColumns[10]},
+			},
+			{
+				Name:    "team_status",
+				Unique:  false,
+				Columns: []*schema.Column{TeamColumns[5]},
+			},
+		},
+	}
 	// UserColumns holds the columns for the "user" table.
 	UserColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -33,14 +73,72 @@ var (
 		Columns:    UserColumns,
 		PrimaryKey: []*schema.Column{UserColumns[0]},
 	}
+	// UserTeamColumns holds the columns for the "user_team" table.
+	UserTeamColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "join_time", Type: field.TypeTime, Nullable: true},
+		{Name: "create_time", Type: field.TypeTime},
+		{Name: "update_time", Type: field.TypeTime},
+		{Name: "is_delete", Type: field.TypeInt8, Default: 0},
+		{Name: "team_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// UserTeamTable holds the schema information for the "user_team" table.
+	UserTeamTable = &schema.Table{
+		Name:       "user_team",
+		Columns:    UserTeamColumns,
+		PrimaryKey: []*schema.Column{UserTeamColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_team_team_memberships",
+				Columns:    []*schema.Column{UserTeamColumns[5]},
+				RefColumns: []*schema.Column{TeamColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "user_team_user_team_memberships",
+				Columns:    []*schema.Column{UserTeamColumns[6]},
+				RefColumns: []*schema.Column{UserColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "userteam_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{UserTeamColumns[6]},
+			},
+			{
+				Name:    "userteam_team_id",
+				Unique:  false,
+				Columns: []*schema.Column{UserTeamColumns[5]},
+			},
+			{
+				Name:    "userteam_user_id_team_id",
+				Unique:  false,
+				Columns: []*schema.Column{UserTeamColumns[6], UserTeamColumns[5]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		TeamTable,
 		UserTable,
+		UserTeamTable,
 	}
 )
 
 func init() {
+	TeamTable.ForeignKeys[0].RefTable = UserTable
+	TeamTable.Annotation = &entsql.Annotation{
+		Table: "team",
+	}
 	UserTable.Annotation = &entsql.Annotation{
 		Table: "user",
+	}
+	UserTeamTable.ForeignKeys[0].RefTable = TeamTable
+	UserTeamTable.ForeignKeys[1].RefTable = UserTable
+	UserTeamTable.Annotation = &entsql.Annotation{
+		Table: "user_team",
 	}
 }

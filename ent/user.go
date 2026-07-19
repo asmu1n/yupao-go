@@ -45,8 +45,40 @@ type User struct {
 	// PlanetCode holds the value of the "planet_code" field.
 	PlanetCode string `json:"planet_code,omitempty"`
 	// Tags holds the value of the "tags" field.
-	Tags         string `json:"tags,omitempty"`
+	Tags string `json:"tags,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges        UserEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// LedTeams holds the value of the led_teams edge.
+	LedTeams []*Team `json:"led_teams,omitempty"`
+	// TeamMemberships holds the value of the team_memberships edge.
+	TeamMemberships []*UserTeam `json:"team_memberships,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// LedTeamsOrErr returns the LedTeams value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) LedTeamsOrErr() ([]*Team, error) {
+	if e.loadedTypes[0] {
+		return e.LedTeams, nil
+	}
+	return nil, &NotLoadedError{edge: "led_teams"}
+}
+
+// TeamMembershipsOrErr returns the TeamMemberships value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) TeamMembershipsOrErr() ([]*UserTeam, error) {
+	if e.loadedTypes[1] {
+		return e.TeamMemberships, nil
+	}
+	return nil, &NotLoadedError{edge: "team_memberships"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -181,6 +213,16 @@ func (_m *User) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *User) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryLedTeams queries the "led_teams" edge of the User entity.
+func (_m *User) QueryLedTeams() *TeamQuery {
+	return NewUserClient(_m.config).QueryLedTeams(_m)
+}
+
+// QueryTeamMemberships queries the "team_memberships" edge of the User entity.
+func (_m *User) QueryTeamMemberships() *UserTeamQuery {
+	return NewUserClient(_m.config).QueryTeamMemberships(_m)
 }
 
 // Update returns a builder for updating this User.

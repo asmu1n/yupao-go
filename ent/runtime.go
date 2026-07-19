@@ -5,13 +5,58 @@ package ent
 import (
 	"time"
 	"yupao-go/ent/schema"
+	"yupao-go/ent/team"
 	"yupao-go/ent/user"
+	"yupao-go/ent/userteam"
+	"yupao-go/internal/pkg/types"
 )
 
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	teamFields := schema.Team{}.Fields()
+	_ = teamFields
+	// teamDescName is the schema descriptor for name field.
+	teamDescName := teamFields[1].Descriptor()
+	// team.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	team.NameValidator = teamDescName.Validators[0].(func(string) error)
+	// teamDescDescription is the schema descriptor for description field.
+	teamDescDescription := teamFields[2].Descriptor()
+	// team.DescriptionValidator is a validator for the "description" field. It is called by the builders before save.
+	team.DescriptionValidator = teamDescDescription.Validators[0].(func(string) error)
+	// teamDescMaxNum is the schema descriptor for max_num field.
+	teamDescMaxNum := teamFields[3].Descriptor()
+	// team.DefaultMaxNum holds the default value on creation for the max_num field.
+	team.DefaultMaxNum = teamDescMaxNum.Default.(int)
+	// teamDescStatus is the schema descriptor for status field.
+	teamDescStatus := teamFields[6].Descriptor()
+	// team.DefaultStatus holds the default value on creation for the status field.
+	team.DefaultStatus = types.TeamStatus(teamDescStatus.Default.(int))
+	// team.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	team.StatusValidator = teamDescStatus.Validators[0].(func(int) error)
+	// teamDescPassword is the schema descriptor for password field.
+	teamDescPassword := teamFields[7].Descriptor()
+	// team.PasswordValidator is a validator for the "password" field. It is called by the builders before save.
+	team.PasswordValidator = teamDescPassword.Validators[0].(func(string) error)
+	// teamDescCreateTime is the schema descriptor for create_time field.
+	teamDescCreateTime := teamFields[8].Descriptor()
+	// team.DefaultCreateTime holds the default value on creation for the create_time field.
+	team.DefaultCreateTime = teamDescCreateTime.Default.(func() time.Time)
+	// teamDescUpdateTime is the schema descriptor for update_time field.
+	teamDescUpdateTime := teamFields[9].Descriptor()
+	// team.DefaultUpdateTime holds the default value on creation for the update_time field.
+	team.DefaultUpdateTime = teamDescUpdateTime.Default.(func() time.Time)
+	// team.UpdateDefaultUpdateTime holds the default value on update for the update_time field.
+	team.UpdateDefaultUpdateTime = teamDescUpdateTime.UpdateDefault.(func() time.Time)
+	// teamDescIsDelete is the schema descriptor for is_delete field.
+	teamDescIsDelete := teamFields[10].Descriptor()
+	// team.DefaultIsDelete holds the default value on creation for the is_delete field.
+	team.DefaultIsDelete = teamDescIsDelete.Default.(int8)
+	// teamDescID is the schema descriptor for id field.
+	teamDescID := teamFields[0].Descriptor()
+	// team.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	team.IDValidator = teamDescID.Validators[0].(func(int64) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescUsername is the schema descriptor for username field.
@@ -76,4 +121,24 @@ func init() {
 	userDescID := userFields[0].Descriptor()
 	// user.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	user.IDValidator = userDescID.Validators[0].(func(int64) error)
+	userteamFields := schema.UserTeam{}.Fields()
+	_ = userteamFields
+	// userteamDescCreateTime is the schema descriptor for create_time field.
+	userteamDescCreateTime := userteamFields[4].Descriptor()
+	// userteam.DefaultCreateTime holds the default value on creation for the create_time field.
+	userteam.DefaultCreateTime = userteamDescCreateTime.Default.(func() time.Time)
+	// userteamDescUpdateTime is the schema descriptor for update_time field.
+	userteamDescUpdateTime := userteamFields[5].Descriptor()
+	// userteam.DefaultUpdateTime holds the default value on creation for the update_time field.
+	userteam.DefaultUpdateTime = userteamDescUpdateTime.Default.(func() time.Time)
+	// userteam.UpdateDefaultUpdateTime holds the default value on update for the update_time field.
+	userteam.UpdateDefaultUpdateTime = userteamDescUpdateTime.UpdateDefault.(func() time.Time)
+	// userteamDescIsDelete is the schema descriptor for is_delete field.
+	userteamDescIsDelete := userteamFields[6].Descriptor()
+	// userteam.DefaultIsDelete holds the default value on creation for the is_delete field.
+	userteam.DefaultIsDelete = userteamDescIsDelete.Default.(int8)
+	// userteamDescID is the schema descriptor for id field.
+	userteamDescID := userteamFields[0].Descriptor()
+	// userteam.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	userteam.IDValidator = userteamDescID.Validators[0].(func(int64) error)
 }

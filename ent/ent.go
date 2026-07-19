@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"yupao-go/ent/team"
 	"yupao-go/ent/user"
+	"yupao-go/ent/userteam"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -73,7 +75,9 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			user.Table: user.ValidColumn,
+			team.Table:     team.ValidColumn,
+			user.Table:     user.ValidColumn,
+			userteam.Table: userteam.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

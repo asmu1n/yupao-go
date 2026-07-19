@@ -8,6 +8,7 @@ import (
 	"yupao-go/internal/pkg/types"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // ID filters vertices based on their ID field.
@@ -958,6 +959,52 @@ func TagsEqualFold(v string) predicate.User {
 // TagsContainsFold applies the ContainsFold predicate on the "tags" field.
 func TagsContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldTags, v))
+}
+
+// HasLedTeams applies the HasEdge predicate on the "led_teams" edge.
+func HasLedTeams() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, LedTeamsTable, LedTeamsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLedTeamsWith applies the HasEdge predicate on the "led_teams" edge with a given conditions (other predicates).
+func HasLedTeamsWith(preds ...predicate.Team) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newLedTeamsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasTeamMemberships applies the HasEdge predicate on the "team_memberships" edge.
+func HasTeamMemberships() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, TeamMembershipsTable, TeamMembershipsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTeamMembershipsWith applies the HasEdge predicate on the "team_memberships" edge with a given conditions (other predicates).
+func HasTeamMembershipsWith(preds ...predicate.UserTeam) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newTeamMembershipsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.
