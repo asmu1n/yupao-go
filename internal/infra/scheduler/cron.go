@@ -2,8 +2,9 @@ package scheduler
 
 import (
 	"context"
-	"log"
 	"sync"
+
+	"yupao-go/internal/pkg/logger"
 
 	"github.com/robfig/cron/v3"
 )
@@ -16,15 +17,15 @@ type Scheduler struct {
 }
 
 func New() *Scheduler {
-	logger := cron.VerbosePrintfLogger(log.Default())
+	cronLog := logger.NewCronLogger()
 
 	return &Scheduler{
 		client: cron.New(
 			cron.WithSeconds(),
-			cron.WithLogger(logger),
+			cron.WithLogger(cronLog),
 			cron.WithChain(
-				cron.Recover(logger),
-				cron.SkipIfStillRunning(logger),
+				cron.Recover(cronLog),
+				cron.SkipIfStillRunning(cronLog),
 			),
 		),
 	}
@@ -36,7 +37,13 @@ func (s *Scheduler) Schedule(spec string, cmd func()) (cron.EntryID, error) {
 	if err != nil {
 		return 0, err
 	}
-	log.Printf("定时任务已注册:%v \n", id)
+	logger.Info("cron job registered",
+		logger.FieldPurpose, logger.PurposeJob,
+		logger.FieldModule, "scheduler",
+		logger.FieldEvent, "cron.registered",
+		"entry_id", id,
+		"spec", spec,
+	)
 	return id, nil
 }
 
@@ -50,6 +57,11 @@ func (s *Scheduler) Start() {
 	}
 	s.client.Start()
 	s.started = true
+	logger.Info("scheduler started",
+		logger.FieldPurpose, logger.PurposeJob,
+		logger.FieldModule, "scheduler",
+		logger.FieldEvent, "cron.started",
+	)
 }
 
 // Stop 停止调度器并等待正在执行的任务结束。
@@ -59,7 +71,6 @@ func (s *Scheduler) Stop(ctx context.Context) error {
 		s.mu.Unlock()
 		return nil
 	}
-	// 获取停止任务的进度并更新运行标记以及解除互斥锁
 	stopCtx := s.client.Stop()
 	s.started = false
 	s.mu.Unlock()
@@ -69,7 +80,6 @@ func (s *Scheduler) Stop(ctx context.Context) error {
 		return nil
 	}
 
-	// select 多路判断，保留外部上下文控制来决定阻塞时长
 	select {
 	case <-stopCtx.Done():
 		return nil
