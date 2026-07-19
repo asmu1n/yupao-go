@@ -4,8 +4,8 @@ import (
 	"strconv"
 
 	"yupao-go/internal/httpapi/middleware"
-	"yupao-go/internal/pkg/response"
 	"yupao-go/internal/module/user"
+	"yupao-go/internal/pkg/response"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -183,7 +183,7 @@ func (h *Handler) MatchUsers(c *gin.Context) {
 		response.RespondError(c, err)
 		return
 	}
-	users, err := h.svc.MatchUsers(c.Request.Context(), num, loginUser)
+	users, err := h.svc.MatchUsers(c.Request.Context(), loginUser, num)
 	if err != nil {
 		response.RespondError(c, err)
 		return

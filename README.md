@@ -6,13 +6,13 @@
 
 ## 1. 设计目标（为什么这样拆）
 
-| 目标 | 做法 |
-|------|------|
-| 业务可扩展 | 业务只放在 `internal/module/<name>/`，不在 `internal/` 顶层平铺 |
-| 依赖清晰 | 业务依赖 `port` 接口，不直接依赖 Redis/DB 实现细节 |
+| 目标         | 做法                                                            |
+| ------------ | --------------------------------------------------------------- |
+| 业务可扩展   | 业务只放在 `internal/module/<name>/`，不在 `internal/` 顶层平铺 |
+| 依赖清晰     | 业务依赖 `port` 接口，不直接依赖 Redis/DB 实现细节              |
 | 改动半径可控 | 用户相关能力集中在 `module/user`（含 HTTP Handler、Repo、预热） |
-| 入口干净 | `cmd/*` 只做装配与生命周期，不写业务规则 |
-| 公共代码克制 | `pkg` 只放与具体业务无关的工具；业务逻辑不要下沉 |
+| 入口干净     | `cmd/*` 只做装配与生命周期，不写业务规则                        |
+| 公共代码克制 | `pkg` 只放与具体业务无关的工具；业务逻辑不要下沉                |
 
 一句话：**业务进 module，协议进 httpapi，能力抽象进 port，技术细节进 infra，公共工具进 pkg，进程在 cmd 拧在一起。**
 
@@ -48,15 +48,15 @@ yupao-go/
 
 ### 各层职责
 
-| 路径 | 职责 | 典型改动 |
-|------|------|----------|
-| `cmd/server` | 组装依赖、启停 HTTP/cron | 新模块注入、新定时任务 |
-| `internal/module/*` | 领域模型、用例、该业务的 API 与持久化 | **日常业务开发主战场** |
-| `internal/httpapi` | 挂路由、全局鉴权 | 注册新 module 的路由 |
-| `internal/port` | Cache / Locker 等抽象 | 新增跨模块技术能力时扩接口 |
-| `internal/infra` | 上述端口的 Redis/DB/cron 实现 | 换客户端、调连接与中间件配置 |
-| `internal/pkg` | 分页、错误码与响应体、通用枚举 | 真正跨业务复用时才加 |
-| `ent/schema` | 表结构与字段约束 | 加字段、改索引后 `go generate` |
+| 路径                | 职责                                  | 典型改动                       |
+| ------------------- | ------------------------------------- | ------------------------------ |
+| `cmd/server`        | 组装依赖、启停 HTTP/cron              | 新模块注入、新定时任务         |
+| `internal/module/*` | 领域模型、用例、该业务的 API 与持久化 | **日常业务开发主战场**         |
+| `internal/httpapi`  | 挂路由、全局鉴权                      | 注册新 module 的路由           |
+| `internal/port`     | Cache / Locker 等抽象                 | 新增跨模块技术能力时扩接口     |
+| `internal/infra`    | 上述端口的 Redis/DB/cron 实现         | 换客户端、调连接与中间件配置   |
+| `internal/pkg`      | 分页、错误码与响应体、通用枚举        | 真正跨业务复用时才加           |
+| `ent/schema`        | 表结构与字段约束                      | 加字段、改索引后 `go generate` |
 
 更细的模块约定见：[`internal/module/README.md`](internal/module/README.md)  
 公共库约定见：[`internal/pkg/README.md`](internal/pkg/README.md)  
@@ -176,15 +176,15 @@ go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 
 ## 7. 放哪里？快速判定
 
-| 你要加的内容 | 放哪里 |
-|--------------|--------|
-| 某业务的用例、模型、该业务 API | `module/<name>/` |
-| 全局路由挂载、登录态中间件 | `httpapi` |
-| 「我需要锁/缓存，不关心 Redis」 | `port` 接口 + `infra` 实现 |
-| 分页、统一 JSON 响应、通用 Gender 等 | `pkg` |
-| 仅某一业务用的算法 | 留在该 `module`，不要进 `pkg` |
-| 表结构 | `ent/schema` |
-| 进程启动参数、组装顺序 | `cmd/*` |
+| 你要加的内容                         | 放哪里                        |
+| ------------------------------------ | ----------------------------- |
+| 某业务的用例、模型、该业务 API       | `module/<name>/`              |
+| 全局路由挂载、登录态中间件           | `httpapi`                     |
+| 「我需要锁/缓存，不关心 Redis」      | `port` 接口 + `infra` 实现    |
+| 分页、统一 JSON 响应、通用 Gender 等 | `pkg`                         |
+| 仅某一业务用的算法                   | 留在该 `module`，不要进 `pkg` |
+| 表结构                               | `ent/schema`                  |
+| 进程启动参数、组装顺序               | `cmd/*`                       |
 
 ---
 
@@ -200,10 +200,11 @@ go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 
 ## 9. 相关文档索引
 
-| 文档 | 内容 |
-|------|------|
-| [internal/module/README.md](internal/module/README.md) | 业务模块目录约定 |
-| [internal/pkg/README.md](internal/pkg/README.md) | 公共库边界 |
-| [internal/module/user/CACHE.md](internal/module/user/CACHE.md) | 匹配查询缓存策略 |
+| 文档                                                           | 内容                                |
+| -------------------------------------------------------------- | ----------------------------------- |
+| [internal/module/README.md](internal/module/README.md)         | 业务模块目录约定                    |
+| [internal/pkg/README.md](internal/pkg/README.md)               | 公共库边界                          |
+| [docs/REDIS_CACHE.md](docs/REDIS_CACHE.md)                     | **项目级 Redis / 缓存策略**（总览） |
+| [internal/module/user/CACHE.md](internal/module/user/CACHE.md) | 匹配查询缓存细节与流程图            |
 
 有疑问时：先看依赖图（第 3 节）和「放哪里」（第 7 节），再在对应目录下搜索现有 `user` 实现作为模板。

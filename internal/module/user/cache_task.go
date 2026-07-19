@@ -50,8 +50,8 @@ func (s *Service) warmUpMatchTask(ctx context.Context) {
 
 	log.Println("开始预热匹配用户缓存")
 
-	// 与 MatchUsers miss 路径共用 loadMatchCandidates，避免候选集分叉。
-	candidates, err := s.loadMatchCandidates(ctx)
+	// 获取活跃用户
+	candidates, err := s.loadActiveCandidates(ctx)
 	if err != nil {
 		log.Printf("预热匹配用户缓存失败，加载活跃用户失败: %v", err)
 		return
@@ -62,13 +62,16 @@ func (s *Service) warmUpMatchTask(ctx context.Context) {
 		return
 	}
 
+	// 创建工作通道
 	jobs := make(chan *User, len(candidates))
 	var wg sync.WaitGroup
 
+	// 启动多个工作子协程
 	for i := 0; i < warmWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// 多个子协程等待目标用户
 			for u := range jobs {
 				if ctx.Err() != nil {
 					return
@@ -82,6 +85,7 @@ func (s *Service) warmUpMatchTask(ctx context.Context) {
 		if ctx.Err() != nil {
 			break
 		}
+		// 发送目标用户去启动任务
 		jobs <- u
 	}
 	close(jobs)
@@ -106,9 +110,9 @@ func (s *Service) warmUpSingleUser(ctx context.Context, loginUser *User, candida
 		}
 		key := matchCacheKey(loginUser.ID, num)
 		var dst []*User
-		// Once：仅补冷 key；计算结果与在线 matchUsers 同源（同一 candidates）。
+		// Once 补冷；算法入口与在线 miss 相同（rankMatches + 同一 candidates）。
 		err := s.cache.Once(ctx, key, matchCacheTTL, &dst, func() (any, error) {
-			return s.matchUsersFromCandidates(ctx, num, loginUser, candidates)
+			return s.rankMatches(ctx, num, loginUser, candidates)
 		})
 		if err != nil {
 			log.Printf("预热匹配缓存失败 key=%s: %v", key, err)
