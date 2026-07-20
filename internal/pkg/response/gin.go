@@ -3,6 +3,8 @@ package response
 import (
 	"net/http"
 
+	"yupao-go/internal/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,7 +14,17 @@ func RespondOK(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, OK(data))
 }
 
+// RespondError 写出错误响应；非业务错误在 HTTP 边界记一次 Error（带 path/method）。
 func RespondError(c *gin.Context, err error) {
+	if err != nil && !IsBizError(err) {
+		logger.Module("http").Error("unhandled system error",
+			logger.FieldPurpose, logger.PurposeHTTP,
+			logger.FieldEvent, "http.system_error",
+			logger.FieldErr, err,
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+		)
+	}
 	c.JSON(HTTPCodeFromErr(err), Fail(err))
 }
 

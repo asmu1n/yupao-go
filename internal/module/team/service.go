@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"yupao-go/internal/module/user"
+	"yupao-go/internal/pkg/logger"
 	"yupao-go/internal/pkg/page"
 	"yupao-go/internal/pkg/response"
 	"yupao-go/internal/pkg/types"
@@ -13,6 +14,9 @@ import (
 
 const joinLockKey = "yupao:join_team"
 const joinLockTTL = 10 * time.Second
+
+// teamLog 队伍模块业务/审计日志。
+var teamLog = logger.Module("team")
 
 // Service 队伍用例服务。
 type Service struct {
@@ -76,7 +80,19 @@ func (s *Service) Add(ctx context.Context, p AddParams, actionUserID int64) (int
 		Status:      status,
 		Password:    password,
 	}
-	return s.repo.CreateTeamWithLeader(ctx, t, actionUserID)
+	id, err := s.repo.CreateTeamWithLeader(ctx, t, actionUserID)
+	if err != nil {
+		return 0, err
+	}
+	teamLog.Info("team created",
+		logger.FieldPurpose, logger.PurposeAudit,
+		logger.FieldEvent, "team.created",
+		"team_id", id,
+		"user_id", actionUserID,
+		"status", status,
+		"max_num", p.MaxNum,
+	)
+	return id, nil
 }
 
 // GetByID 按 ID 获取队伍（不含密码）。
@@ -223,7 +239,17 @@ func (s *Service) Update(ctx context.Context, p UpdateParams, actionUserID int64
 		old.Password = *p.Password
 	}
 
-	return s.repo.Update(ctx, old)
+	if err := s.repo.Update(ctx, old); err != nil {
+		return err
+	}
+	teamLog.Info("team updated",
+		logger.FieldPurpose, logger.PurposeBiz,
+		logger.FieldEvent, "team.updated",
+		"team_id", p.ID,
+		"user_id", actionUserID,
+		"is_admin", isAdmin,
+	)
+	return nil
 }
 
 // Join 加入队伍（分布式锁防止并发超员/重复加入）。
@@ -273,13 +299,37 @@ func (s *Service) Join(ctx context.Context, p JoinParams, actionUserID int64) er
 	}
 
 	if s.locker == nil {
-		return doJoin()
+		if err := doJoin(); err != nil {
+			return err
+		}
+		teamLog.Info("team joined",
+			logger.FieldPurpose, logger.PurposeAudit,
+			logger.FieldEvent, "team.joined",
+			"team_id", p.TeamID,
+			"user_id", actionUserID,
+		)
+		return nil
 	}
 	err = s.locker.RunWithLock(ctx, joinLockKey, joinLockTTL, doJoin)
 	if err == port.ErrLockFailed {
+		teamLog.Warn("team join busy",
+			logger.FieldPurpose, logger.PurposeBiz,
+			logger.FieldEvent, "team.join_busy",
+			"team_id", p.TeamID,
+			"user_id", actionUserID,
+		)
 		return response.NewBizErrorWithDetail(response.SystemError, "系统繁忙，请稍后重试")
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	teamLog.Info("team joined",
+		logger.FieldPurpose, logger.PurposeAudit,
+		logger.FieldEvent, "team.joined",
+		"team_id", p.TeamID,
+		"user_id", actionUserID,
+	)
+	return nil
 }
 
 // Quit 退出队伍；仅剩一人时解散；队长退出则移交最早加入的成员。
@@ -304,7 +354,17 @@ func (s *Service) Quit(ctx context.Context, p QuitParams, targetUserID int64) er
 		return err
 	}
 	if n <= 1 {
-		return s.repo.SoftDeleteTeamAndMembers(ctx, p.TeamID)
+		if err := s.repo.SoftDeleteTeamAndMembers(ctx, p.TeamID); err != nil {
+			return err
+		}
+		teamLog.Info("team disbanded on quit",
+			logger.FieldPurpose, logger.PurposeAudit,
+			logger.FieldEvent, "team.disbanded",
+			"team_id", p.TeamID,
+			"user_id", targetUserID,
+			"reason", "last_member_quit",
+		)
+		return nil
 	}
 
 	if t.UserID == targetUserID {
@@ -321,12 +381,37 @@ func (s *Service) Quit(ctx context.Context, p QuitParams, targetUserID int64) er
 			}
 		}
 		if next == 0 {
+			teamLog.Error("transfer leader failed: no successor",
+				logger.FieldPurpose, logger.PurposeAlert,
+				logger.FieldEvent, "team.transfer_leader_error",
+				"team_id", p.TeamID,
+				"user_id", targetUserID,
+			)
 			return response.NewBizError(response.SystemError)
 		}
-		return s.repo.TransferLeaderAndRemoveMember(ctx, p.TeamID, targetUserID, next)
+		if err := s.repo.TransferLeaderAndRemoveMember(ctx, p.TeamID, targetUserID, next); err != nil {
+			return err
+		}
+		teamLog.Info("leader quit and transferred",
+			logger.FieldPurpose, logger.PurposeAudit,
+			logger.FieldEvent, "team.leader_transferred",
+			"team_id", p.TeamID,
+			"user_id", targetUserID,
+			"new_leader_id", next,
+		)
+		return nil
 	}
 
-	return s.repo.SoftDeleteMember(ctx, targetUserID, p.TeamID)
+	if err := s.repo.SoftDeleteMember(ctx, targetUserID, p.TeamID); err != nil {
+		return err
+	}
+	teamLog.Info("team quit",
+		logger.FieldPurpose, logger.PurposeAudit,
+		logger.FieldEvent, "team.quit",
+		"team_id", p.TeamID,
+		"user_id", targetUserID,
+	)
+	return nil
 }
 
 // Delete 队长解散队伍。
@@ -344,7 +429,16 @@ func (s *Service) Delete(ctx context.Context, teamID, actionUserID int64) error 
 	if t.UserID != actionUserID {
 		return response.NewBizErrorWithDetail(response.NoAuth, "无访问权限")
 	}
-	return s.repo.SoftDeleteTeamAndMembers(ctx, teamID)
+	if err := s.repo.SoftDeleteTeamAndMembers(ctx, teamID); err != nil {
+		return err
+	}
+	teamLog.Info("team deleted",
+		logger.FieldPurpose, logger.PurposeAudit,
+		logger.FieldEvent, "team.deleted",
+		"team_id", teamID,
+		"user_id", actionUserID,
+	)
+	return nil
 }
 
 func (s *Service) canViewTeam(ctx context.Context, t *Team, viewerID int64, isAdmin bool) (bool, error) {

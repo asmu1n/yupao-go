@@ -7,11 +7,15 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"yupao-go/internal/pkg/logger"
 	"yupao-go/internal/pkg/response"
 	"yupao-go/internal/port"
 )
 
 var validAccountPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
+// userLog 用户模块业务/审计日志。
+var userLog = logger.Module("user")
 
 type Service struct {
 	repo  Repository
@@ -51,6 +55,12 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(p.UserPassword), bcrypt.DefaultCost)
 	if err != nil {
+		userLog.Error("password hash failed",
+			logger.FieldPurpose, logger.PurposeAlert,
+			logger.FieldEvent, "user.register_hash_error",
+			logger.FieldErr, err,
+			"account", p.UserAccount,
+		)
 		return 0, response.NewBizErrorWithDetail(response.SystemError, "密码加密失败")
 	}
 
@@ -59,7 +69,17 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (int64, error)
 		Password:    string(hashed),
 		PlanetCode:  p.PlanetCode,
 	}
-	return s.repo.Create(ctx, u)
+	id, err := s.repo.Create(ctx, u)
+	if err != nil {
+		return 0, err
+	}
+	userLog.Info("user registered",
+		logger.FieldPurpose, logger.PurposeAudit,
+		logger.FieldEvent, "user.registered",
+		"user_id", id,
+		"account", p.UserAccount,
+	)
+	return id, nil
 }
 
 // Login 用户登录，校验账号密码后返回脱敏用户信息
@@ -73,13 +93,31 @@ func (s *Service) Login(ctx context.Context, account, password string) (*User, e
 		return nil, err
 	}
 	if u == nil {
+		userLog.Info("login failed",
+			logger.FieldPurpose, logger.PurposeAudit,
+			logger.FieldEvent, "user.login_failed",
+			"account", account,
+			"reason", "not_found",
+		)
 		return nil, response.NewBizErrorWithDetail(response.ParamsError, "账号或密码错误")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)); err != nil {
+		userLog.Info("login failed",
+			logger.FieldPurpose, logger.PurposeAudit,
+			logger.FieldEvent, "user.login_failed",
+			"account", account,
+			"reason", "bad_password",
+		)
 		return nil, response.NewBizErrorWithDetail(response.ParamsError, "账号或密码错误")
 	}
 
+	userLog.Info("user logged in",
+		logger.FieldPurpose, logger.PurposeAudit,
+		logger.FieldEvent, "user.login_ok",
+		"user_id", u.ID,
+		"account", account,
+	)
 	return u, nil
 }
 
@@ -137,6 +175,13 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 	}
 
 	s.invalidateMatchCache(ctx, targetID)
+	userLog.Info("user updated",
+		logger.FieldPurpose, logger.PurposeBiz,
+		logger.FieldEvent, "user.updated",
+		"target_id", targetID,
+		"caller_id", callerID,
+		"is_admin", isAdmin,
+	)
 	return nil
 }
 

@@ -1,11 +1,20 @@
 package response
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type Code struct {
 	HTTP    int
 	Biz     int
 	Message string
+}
+
+// IsBizError 判断是否为可预期业务错误（参数/鉴权/未找到等）。
+func IsBizError(err error) bool {
+	var biz *BizError
+	return errors.As(err, &biz)
 }
 
 var (

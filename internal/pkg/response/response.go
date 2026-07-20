@@ -18,11 +18,10 @@ func OK(data any) *Response {
 
 // 用于处理未知的错误，如果识别为业务错误，则使用业务错误码，否则统一用系统错误码隐蔽内部细节
 func Fail(err error) *Response {
-	var bizErr *BizError
-	if errors.As(err, &bizErr) {
+	if IsBizError(err) {
 		return &Response{
-			Code:    bizErr.BizCode(),
-			Message: bizErr.Error(),
+			Code:    err.(*BizError).BizCode(),
+			Message: err.Error(),
 		}
 	}
 	return &Response{

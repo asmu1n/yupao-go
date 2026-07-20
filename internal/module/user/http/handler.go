@@ -5,6 +5,7 @@ import (
 
 	"yupao-go/internal/httpapi/middleware"
 	"yupao-go/internal/module/user"
+	"yupao-go/internal/pkg/logger"
 	"yupao-go/internal/pkg/response"
 
 	"github.com/gin-contrib/sessions"
@@ -80,8 +81,14 @@ func (h *Handler) Login(c *gin.Context) {
 // @Router   /user/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
+	uid := session.Get(middleware.SessionKeyUserID)
 	session.Clear()
 	_ = session.Save()
+	logger.Module("user").Info("user logged out",
+		logger.FieldPurpose, logger.PurposeAudit,
+		logger.FieldEvent, "user.logout",
+		"user_id", uid,
+	)
 	response.RespondOK(c, nil)
 }
 
