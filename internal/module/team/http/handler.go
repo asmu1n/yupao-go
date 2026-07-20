@@ -95,7 +95,8 @@ func (h *Handler) Get(c *gin.Context) {
 		response.RespondError(c, response.NewBizError(response.ParamsError))
 		return
 	}
-	t, err := h.svc.GetByID(c.Request.Context(), id)
+	uid, isAdmin := h.optionalLogin(c)
+	t, err := h.svc.GetByID(c.Request.Context(), id, uid, isAdmin)
 	if err != nil {
 		response.RespondError(c, err)
 		return
@@ -141,7 +142,8 @@ func (h *Handler) ListPage(c *gin.Context) {
 		response.RespondBindingError(c, err)
 		return
 	}
-	page, err := h.svc.ListPage(c.Request.Context(), q)
+	uid, isAdmin := h.optionalLogin(c)
+	page, err := h.svc.ListPage(c.Request.Context(), q, uid, isAdmin)
 	if err != nil {
 		response.RespondError(c, err)
 		return
@@ -243,8 +245,11 @@ func (h *Handler) ListMyCreate(c *gin.Context) {
 		response.RespondError(c, err)
 		return
 	}
-	var q team.QueryParams
-	_ = c.ShouldBindQuery(&q)
+	var q team.MyCreateQueryParams
+	if err := c.ShouldBindQuery(&q); err != nil {
+		response.RespondBindingError(c, err)
+		return
+	}
 	list, err := h.svc.ListMyCreate(c.Request.Context(), q, uid)
 	if err != nil {
 		response.RespondError(c, err)
@@ -266,8 +271,11 @@ func (h *Handler) ListMyJoin(c *gin.Context) {
 		response.RespondError(c, err)
 		return
 	}
-	var q team.QueryParams
-	_ = c.ShouldBindQuery(&q)
+	var q team.MyJoinQueryParams
+	if err := c.ShouldBindQuery(&q); err != nil {
+		response.RespondBindingError(c, err)
+		return
+	}
 	list, err := h.svc.ListMyJoin(c.Request.Context(), q, uid)
 	if err != nil {
 		response.RespondError(c, err)
@@ -281,7 +289,7 @@ func (h *Handler) resolveAdmin(c *gin.Context, uid int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return team.IsAdminUser(u), nil
+	return h.usersvc.IsAdmin(u), nil
 }
 
 // optionalLogin 尝试读取登录用户；未登录返回 0,false。

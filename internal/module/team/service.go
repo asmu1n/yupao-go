@@ -24,6 +24,7 @@ type Service struct {
 // UserReader 读取用户信息（创建人展示、管理员判断）。
 type UserReader interface {
 	ListByIDs(ctx context.Context, ids []int64) ([]*user.User, error)
+	IsAdmin(u *user.User) bool
 }
 
 // NewService 构造队伍服务。
@@ -32,10 +33,7 @@ func NewService(repo Repository, users UserReader, locker port.Locker) *Service 
 }
 
 // Add 创建队伍并自动加入队长。
-func (s *Service) Add(ctx context.Context, p AddParams, loginUserID int64) (int64, error) {
-	if loginUserID <= 0 {
-		return 0, response.NewBizError(response.NotLogin)
-	}
+func (s *Service) Add(ctx context.Context, p AddParams, actionUserID int64) (int64, error) {
 	if p.MaxNum < minTeamMembers || p.MaxNum > maxTeamMembers {
 		return 0, response.NewBizErrorWithDetail(response.ParamsError, "队伍人数不满足要求")
 	}
@@ -50,9 +48,6 @@ func (s *Service) Add(ctx context.Context, p AddParams, loginUserID int64) (int6
 	if p.Status != nil {
 		status = *p.Status
 	}
-	if !status.Valid() {
-		return 0, response.NewBizErrorWithDetail(response.ParamsError, "队伍状态不满足要求")
-	}
 	password := ""
 	if status == types.TeamStatusSecret {
 		if p.Password == nil || *p.Password == "" || len(*p.Password) > 32 {
@@ -64,7 +59,7 @@ func (s *Service) Add(ctx context.Context, p AddParams, loginUserID int64) (int6
 		return 0, response.NewBizErrorWithDetail(response.ParamsError, "超时时间必须晚于当前时间")
 	}
 
-	createdCount, err := s.repo.CountCreatedByUser(ctx, loginUserID)
+	createdCount, err := s.repo.CountCreatedByUser(ctx, actionUserID)
 	if err != nil {
 		return 0, err
 	}
@@ -77,15 +72,15 @@ func (s *Service) Add(ctx context.Context, p AddParams, loginUserID int64) (int6
 		Description: p.Description,
 		MaxNum:      p.MaxNum,
 		ExpireTime:  p.ExpireTime,
-		UserID:      loginUserID,
+		UserID:      actionUserID,
 		Status:      status,
 		Password:    password,
 	}
-	return s.repo.CreateTeamWithLeader(ctx, t, loginUserID)
+	return s.repo.CreateTeamWithLeader(ctx, t, actionUserID)
 }
 
 // GetByID 按 ID 获取队伍（不含密码）。
-func (s *Service) GetByID(ctx context.Context, id int64) (*Team, error) {
+func (s *Service) GetByID(ctx context.Context, id, viewerID int64, isAdmin bool) (*TeamUserVO, error) {
 	if id <= 0 {
 		return nil, response.NewBizError(response.ParamsError)
 	}
@@ -96,23 +91,23 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*Team, error) {
 	if t == nil {
 		return nil, response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
 	}
-	return t, nil
+	isVisible, err := s.canViewTeam(ctx, t, viewerID, isAdmin)
+	if err != nil {
+		return nil, err
+	}
+	if !isVisible {
+		return nil, response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
+	}
+	teamVO, err := s.toTeamUserVOs(ctx, []*Team{t}, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	return teamVO[0], nil
 }
 
 // List 查询队伍列表并填充创建人、加入态与人数。
-// loginUserID 为 0 表示未登录（不填充 hasJoin）。
-func (s *Service) List(ctx context.Context, q QueryParams, loginUserID int64, isAdmin bool) ([]*TeamUserVO, error) {
-	status := types.TeamStatusPublic
-	if q.Status != nil {
-		status = *q.Status
-	} else {
-		q.Status = &status
-	}
-	if !status.Valid() {
-		status = types.TeamStatusPublic
-		q.Status = &status
-	}
-	if !isAdmin && status == types.TeamStatusPrivate {
+func (s *Service) List(ctx context.Context, q QueryParams, viewerID int64, isAdmin bool) ([]*TeamUserVO, error) {
+	if !isAdmin && q.Status != nil && *q.Status == types.TeamStatusPrivate {
 		return nil, response.NewBizError(response.NoAuth)
 	}
 
@@ -120,55 +115,69 @@ func (s *Service) List(ctx context.Context, q QueryParams, loginUserID int64, is
 	if err != nil {
 		return nil, err
 	}
-	return s.toTeamUserVOs(ctx, teams, loginUserID)
+	return s.toTeamUserVOs(ctx, teams, viewerID)
 }
 
 // ListPage 分页查询队伍实体（管理/简单列表，不含 VO  enrichment）。
-func (s *Service) ListPage(ctx context.Context, q QueryParams) (*page.PageResponse[*Team], error) {
-	rows, total, err := s.repo.ListPage(ctx, q)
+func (s *Service) ListPage(ctx context.Context, q QueryParams, viewerID int64, isAdmin bool) (*page.PageResponse[*TeamUserVO], error) {
+	if !isAdmin && q.Status != nil && *q.Status == types.TeamStatusPrivate {
+		return nil, response.NewBizError(response.NoAuth)
+	}
+	rows, total, err := s.repo.ListPage(ctx, q, isAdmin)
 	if err != nil {
 		return nil, err
 	}
-	return page.NewPageResponse(rows, total, q.PageRequest), nil
-}
-
-// ListMyCreate 我创建的队伍。
-func (s *Service) ListMyCreate(ctx context.Context, q QueryParams, loginUserID int64) ([]*TeamUserVO, error) {
-	if loginUserID <= 0 {
-		return nil, response.NewBizError(response.NotLogin)
-	}
-	uid := loginUserID
-	q.UserID = &uid
-	// 创建者视角可看自己创建的私有队
-	teams, err := s.repo.List(ctx, q, true)
+	rowsVO, err := s.toTeamUserVOs(ctx, rows, viewerID)
 	if err != nil {
 		return nil, err
 	}
-	return s.toTeamUserVOs(ctx, teams, loginUserID)
+	return page.NewPageResponse(rowsVO, total, q.PageRequest), nil
 }
 
-// ListMyJoin 我加入的队伍。
-func (s *Service) ListMyJoin(ctx context.Context, q QueryParams, loginUserID int64) ([]*TeamUserVO, error) {
-	if loginUserID <= 0 {
-		return nil, response.NewBizError(response.NotLogin)
+// ListMyCreate 检索当前用户创建的队伍。
+func (s *Service) ListMyCreate(ctx context.Context, q MyCreateQueryParams, viewerID int64) ([]*TeamUserVO, error) {
+	query := QueryParams{
+		SearchText:  q.SearchText,
+		Name:        q.Name,
+		Description: q.Description,
+		MaxNum:      q.MaxNum,
+		OwnerID:     &viewerID,
+		Status:      q.Status,
 	}
-	ids, err := s.repo.ListTeamIDsByUser(ctx, loginUserID)
+	teams, err := s.repo.List(ctx, query, true)
+	if err != nil {
+		return nil, err
+	}
+	return s.toTeamUserVOs(ctx, teams, viewerID)
+}
+
+// ListMyJoin 检索当前用户加入的队伍。
+func (s *Service) ListMyJoin(ctx context.Context, q MyJoinQueryParams, viewerID int64) ([]*TeamUserVO, error) {
+	query := QueryParams{
+		SearchText:  q.SearchText,
+		Name:        q.Name,
+		Description: q.Description,
+		MaxNum:      q.MaxNum,
+		Status:      q.Status,
+	}
+	// 查询目标加入哪些队伍
+	ids, err := s.repo.ListTeamIDsByUser(ctx, viewerID)
 	if err != nil {
 		return nil, err
 	}
 	if len(ids) == 0 {
 		return []*TeamUserVO{}, nil
 	}
-	q.IDList = ids
-	teams, err := s.repo.List(ctx, q, true)
+	query.IDList = append([]int64(nil), ids...)
+	teams, err := s.repo.List(ctx, query, true)
 	if err != nil {
 		return nil, err
 	}
-	return s.toTeamUserVOs(ctx, teams, loginUserID)
+	return s.toTeamUserVOs(ctx, teams, viewerID)
 }
 
 // Update 更新队伍（队长或管理员）。
-func (s *Service) Update(ctx context.Context, p UpdateParams, loginUserID int64, isAdmin bool) error {
+func (s *Service) Update(ctx context.Context, p UpdateParams, actionUserID int64, isAdmin bool) error {
 	if p.ID <= 0 {
 		return response.NewBizError(response.ParamsError)
 	}
@@ -179,7 +188,7 @@ func (s *Service) Update(ctx context.Context, p UpdateParams, loginUserID int64,
 	if old == nil {
 		return response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
 	}
-	if old.UserID != loginUserID && !isAdmin {
+	if old.UserID != actionUserID && !isAdmin {
 		return response.NewBizError(response.NoAuth)
 	}
 
@@ -199,9 +208,6 @@ func (s *Service) Update(ctx context.Context, p UpdateParams, loginUserID int64,
 		old.ExpireTime = p.ExpireTime
 	}
 	if p.Status != nil {
-		if !p.Status.Valid() {
-			return response.NewBizErrorWithDetail(response.ParamsError, "队伍状态不满足要求")
-		}
 		old.Status = *p.Status
 	}
 	if old.Status == types.TeamStatusSecret {
@@ -221,10 +227,7 @@ func (s *Service) Update(ctx context.Context, p UpdateParams, loginUserID int64,
 }
 
 // Join 加入队伍（分布式锁防止并发超员/重复加入）。
-func (s *Service) Join(ctx context.Context, p JoinParams, loginUserID int64) error {
-	if loginUserID <= 0 {
-		return response.NewBizError(response.NotLogin)
-	}
+func (s *Service) Join(ctx context.Context, p JoinParams, actionUserID int64) error {
 	t, err := s.repo.GetByID(ctx, p.TeamID)
 	if err != nil {
 		return err
@@ -245,14 +248,14 @@ func (s *Service) Join(ctx context.Context, p JoinParams, loginUserID int64) err
 	}
 
 	doJoin := func() error {
-		joined, err := s.repo.CountUserMemberships(ctx, loginUserID)
+		joined, err := s.repo.CountUserMemberships(ctx, actionUserID)
 		if err != nil {
 			return err
 		}
 		if joined >= maxJoinTeams {
 			return response.NewBizErrorWithDetail(response.ParamsError, "最多创建和加入 5 个队伍")
 		}
-		has, err := s.repo.HasJoined(ctx, loginUserID, p.TeamID)
+		has, err := s.repo.HasJoined(ctx, actionUserID, p.TeamID)
 		if err != nil {
 			return err
 		}
@@ -266,7 +269,7 @@ func (s *Service) Join(ctx context.Context, p JoinParams, loginUserID int64) err
 		if n >= int64(t.MaxNum) {
 			return response.NewBizErrorWithDetail(response.ParamsError, "队伍已满")
 		}
-		return s.repo.AddMember(ctx, loginUserID, p.TeamID, time.Now())
+		return s.repo.AddMember(ctx, actionUserID, p.TeamID, time.Now())
 	}
 
 	if s.locker == nil {
@@ -280,10 +283,7 @@ func (s *Service) Join(ctx context.Context, p JoinParams, loginUserID int64) err
 }
 
 // Quit 退出队伍；仅剩一人时解散；队长退出则移交最早加入的成员。
-func (s *Service) Quit(ctx context.Context, p QuitParams, loginUserID int64) error {
-	if loginUserID <= 0 {
-		return response.NewBizError(response.NotLogin)
-	}
+func (s *Service) Quit(ctx context.Context, p QuitParams, targetUserID int64) error {
 	t, err := s.repo.GetByID(ctx, p.TeamID)
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func (s *Service) Quit(ctx context.Context, p QuitParams, loginUserID int64) err
 	if t == nil {
 		return response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
 	}
-	has, err := s.repo.HasJoined(ctx, loginUserID, p.TeamID)
+	has, err := s.repo.HasJoined(ctx, targetUserID, p.TeamID)
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func (s *Service) Quit(ctx context.Context, p QuitParams, loginUserID int64) err
 		return s.repo.SoftDeleteTeamAndMembers(ctx, p.TeamID)
 	}
 
-	if t.UserID == loginUserID {
+	if t.UserID == targetUserID {
 		// 移交队长：按成员关系 id 升序，取第一个非当前队长的成员（最早加入者优先）
 		members, err := s.repo.ListMembersByTeamOrdered(ctx, p.TeamID, 0)
 		if err != nil {
@@ -315,7 +315,7 @@ func (s *Service) Quit(ctx context.Context, p QuitParams, loginUserID int64) err
 		}
 		var next int64
 		for _, m := range members {
-			if m.UserID != loginUserID {
+			if m.UserID != targetUserID {
 				next = m.UserID
 				break
 			}
@@ -323,14 +323,14 @@ func (s *Service) Quit(ctx context.Context, p QuitParams, loginUserID int64) err
 		if next == 0 {
 			return response.NewBizError(response.SystemError)
 		}
-		return s.repo.TransferLeaderAndRemoveMember(ctx, p.TeamID, loginUserID, next)
+		return s.repo.TransferLeaderAndRemoveMember(ctx, p.TeamID, targetUserID, next)
 	}
 
-	return s.repo.SoftDeleteMember(ctx, loginUserID, p.TeamID)
+	return s.repo.SoftDeleteMember(ctx, targetUserID, p.TeamID)
 }
 
 // Delete 队长解散队伍。
-func (s *Service) Delete(ctx context.Context, teamID, loginUserID int64) error {
+func (s *Service) Delete(ctx context.Context, teamID, actionUserID int64) error {
 	if teamID <= 0 {
 		return response.NewBizError(response.ParamsError)
 	}
@@ -341,18 +341,28 @@ func (s *Service) Delete(ctx context.Context, teamID, loginUserID int64) error {
 	if t == nil {
 		return response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
 	}
-	if t.UserID != loginUserID {
+	if t.UserID != actionUserID {
 		return response.NewBizErrorWithDetail(response.NoAuth, "无访问权限")
 	}
 	return s.repo.SoftDeleteTeamAndMembers(ctx, teamID)
 }
 
-// IsAdminUser 根据用户角色判断是否管理员。
-func IsAdminUser(u *user.User) bool {
-	return u != nil && u.UserRole == user.RoleAdmin
+func (s *Service) canViewTeam(ctx context.Context, t *Team, viewerID int64, isAdmin bool) (bool, error) {
+	// 如果不是私有队伍就开放查看权限
+	if t.Status != types.TeamStatusPrivate {
+		return true, nil
+	}
+	// 检查用户类型，（所有者、管理员 /  游客）
+	if isAdmin || t.UserID == viewerID {
+		return true, nil
+	} else if viewerID == 0 {
+		return false, nil
+	}
+
+	return s.repo.HasJoined(ctx, viewerID, t.ID)
 }
 
-func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID int64) ([]*TeamUserVO, error) {
+func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, viewerID int64) ([]*TeamUserVO, error) {
 	if len(teams) == 0 {
 		return []*TeamUserVO{}, nil
 	}
@@ -387,9 +397,9 @@ func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID 
 		userMap[u.ID] = u
 	}
 
-	var joined map[int64]struct{}
-	if loginUserID > 0 {
-		joined, err = s.repo.JoinedTeamIDs(ctx, loginUserID, ids)
+	joined := map[int64]struct{}{}
+	if viewerID > 0 {
+		joined, err = s.repo.JoinedTeamIDs(ctx, viewerID, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -412,14 +422,23 @@ func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID 
 		if joined != nil {
 			_, vo.HasJoin = joined[t.ID]
 		}
-		if t.UserID > 0 {
-			u := userMap[t.UserID]
-			if u != nil {
-				// Password 已 json:"-"，可直接返回
-				vo.CreateUser = u
-			}
+		u := userMap[t.UserID]
+		if u != nil {
+			vo.CreateUser = toTeamCreatorVO(u)
 		}
 		out = append(out, vo)
 	}
 	return out, nil
+}
+
+func toTeamCreatorVO(u *user.User) *TeamCreatorVO {
+	if u == nil {
+		return nil
+	}
+	return &TeamCreatorVO{
+		ID:        u.ID,
+		Username:  u.Username,
+		AvatarURL: u.AvatarURL,
+		Gender:    u.Gender,
+	}
 }

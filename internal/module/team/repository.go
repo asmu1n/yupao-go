@@ -18,7 +18,7 @@ type Repository interface {
 
 	CountCreatedByUser(ctx context.Context, userID int64) (int64, error)
 	List(ctx context.Context, q QueryParams, includePrivate bool) ([]*Team, error)
-	ListPage(ctx context.Context, q QueryParams) ([]*Team, int64, error)
+	ListPage(ctx context.Context, q QueryParams, includePrivate bool) ([]*Team, int64, error)
 
 	AddMember(ctx context.Context, userID, teamID int64, joinTime time.Time) error
 	// SoftDeleteMember 逻辑删除单条成员关系。
