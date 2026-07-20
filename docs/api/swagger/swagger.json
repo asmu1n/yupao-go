@@ -842,7 +842,16 @@
                     "maxLength": 32
                 },
                 "status": {
-                    "$ref": "#/definitions/types.TeamStatus"
+                    "enum": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.TeamStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -915,6 +924,23 @@
                 }
             }
         },
+        "team.TeamCreatorVO": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/types.Gender"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "team.TeamUserVO": {
             "type": "object",
             "properties": {
@@ -922,7 +948,7 @@
                     "type": "string"
                 },
                 "createUser": {
-                    "$ref": "#/definitions/user.User"
+                    "$ref": "#/definitions/team.TeamCreatorVO"
                 },
                 "description": {
                     "type": "string"
@@ -981,7 +1007,16 @@
                     "maxLength": 32
                 },
                 "status": {
-                    "$ref": "#/definitions/types.TeamStatus"
+                    "enum": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.TeamStatus"
+                        }
+                    ]
                 }
             }
         },

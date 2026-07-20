@@ -848,7 +848,16 @@ const docTemplate = `{
                     "maxLength": 32
                 },
                 "status": {
-                    "$ref": "#/definitions/types.TeamStatus"
+                    "enum": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.TeamStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -921,6 +930,23 @@ const docTemplate = `{
                 }
             }
         },
+        "team.TeamCreatorVO": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/types.Gender"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "team.TeamUserVO": {
             "type": "object",
             "properties": {
@@ -928,7 +954,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "createUser": {
-                    "$ref": "#/definitions/user.User"
+                    "$ref": "#/definitions/team.TeamCreatorVO"
                 },
                 "description": {
                     "type": "string"
@@ -987,7 +1013,16 @@ const docTemplate = `{
                     "maxLength": 32
                 },
                 "status": {
-                    "$ref": "#/definitions/types.TeamStatus"
+                    "enum": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.TeamStatus"
+                        }
+                    ]
                 }
             }
         },

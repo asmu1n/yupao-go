@@ -26,7 +26,12 @@ definitions:
         maxLength: 32
         type: string
       status:
-        $ref: '#/definitions/types.TeamStatus'
+        allOf:
+        - $ref: '#/definitions/types.TeamStatus'
+        enum:
+        - 0
+        - 1
+        - 2
     required:
     - expireTime
     - maxNum
@@ -77,12 +82,23 @@ definitions:
         description: 队长
         type: integer
     type: object
+  team.TeamCreatorVO:
+    properties:
+      avatarUrl:
+        type: string
+      gender:
+        $ref: '#/definitions/types.Gender'
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
   team.TeamUserVO:
     properties:
       createTime:
         type: string
       createUser:
-        $ref: '#/definitions/user.User'
+        $ref: '#/definitions/team.TeamCreatorVO'
       description:
         type: string
       expireTime:
@@ -120,7 +136,12 @@ definitions:
         maxLength: 32
         type: string
       status:
-        $ref: '#/definitions/types.TeamStatus'
+        allOf:
+        - $ref: '#/definitions/types.TeamStatus'
+        enum:
+        - 0
+        - 1
+        - 2
     required:
     - id
     type: object
