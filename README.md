@@ -25,7 +25,9 @@ yupao-go/
 ├── cmd/
 │   ├── server/          # HTTP API 入口（装配 DB/Redis/Service/路由/定时任务）
 │   └── seed/            # 生成测试用户 SQL 等辅助命令
-├── api/swagger/         # OpenAPI 生成物（文档与 Swagger UI）
+├── docs/
+│   ├── api/swagger/     # OpenAPI 生成物（Swagger UI 读这里）
+│   └── REDIS_CACHE.md   # Redis / 缓存总览
 ├── ent/
 │   └── schema/          # 手写 ent schema（改表结构只动这里，再 generate）
 ├── internal/
@@ -41,7 +43,7 @@ yupao-go/
 │   ├── httpapi/         # 路由注册、鉴权中间件
 │   ├── port/            # 跨模块技术端口（Cache、Locker）
 │   ├── infra/           # 基础设施实现（DB、Redis、缓存、锁、定时器）
-│   ├── pkg/             # 公共库（分页、统一响应、基础类型）
+│   ├── pkg/             # 公共库（logger、分页、统一响应、基础类型）
 │   └── config/          # 环境变量加载
 ├── docker-compose.dev.yml
 ├── Dockerfile
@@ -52,16 +54,17 @@ yupao-go/
 
 | 路径                | 职责                                  | 典型改动                       |
 | ------------------- | ------------------------------------- | ------------------------------ |
-| `cmd/server`        | 组装依赖、启停 HTTP/cron              | 新模块注入、新定时任务         |
+| `cmd/server`        | 组装依赖、启停 HTTP/cron、`logger.Init` | 新模块注入、新定时任务       |
 | `internal/module/*` | 领域模型、用例、该业务的 API 与持久化 | **日常业务开发主战场**         |
 | `internal/httpapi`  | 挂路由、全局鉴权                      | 注册新 module 的路由           |
 | `internal/port`     | Cache / Locker 等抽象                 | 新增跨模块技术能力时扩接口     |
 | `internal/infra`    | 上述端口的 Redis/DB/cron 实现         | 换客户端、调连接与中间件配置   |
-| `internal/pkg`      | 分页、错误码与响应体、通用枚举        | 真正跨业务复用时才加           |
+| `internal/pkg`      | logger、分页、错误码与响应体、通用枚举 | 真正跨业务复用时才加          |
 | `ent/schema`        | 表结构与字段约束                      | 加字段、改索引后 `go generate` |
 
 更细的模块约定见：[`internal/module/README.md`](internal/module/README.md)  
 公共库约定见：[`internal/pkg/README.md`](internal/pkg/README.md)  
+结构化日志见：[`internal/pkg/logger/README.md`](internal/pkg/logger/README.md)  
 匹配缓存细节见：[`internal/module/user/CACHE.md`](internal/module/user/CACHE.md)
 
 ---
@@ -129,11 +132,18 @@ docker compose -f docker-compose.dev.yml up -d
 ### 5.3 运行 API
 
 ```bash
-# 可选：LOG_LEVEL=debug|info|warn|error  LOG_FORMAT=text|json  ENV=prod（prod 默认 json）
+# 可选日志相关环境变量：
+#   LOG_LEVEL=debug|info|warn|error
+#   LOG_FORMAT=text|json
+#   SERVICE_NAME=yupao-api
+#   ENV=prod   # 未设 LOG_FORMAT 时 prod/production 默认 json
 go run ./cmd/server
 # 默认 :8080
-# Swagger：http://localhost:8080/swagger/index.html
+# Swagger UI：http://localhost:8080/swagger/index.html
+# 生成物目录：docs/api/swagger（import: yupao-go/docs/api/swagger）
 ```
+
+访问日志目前来自 **Gin 默认 Logger**（`gin.Default`）；业务 / 任务 / 审计使用 `internal/pkg/logger` 结构化输出（stderr）。详见 [logger README](internal/pkg/logger/README.md)。
 
 ### 5.4 常用命令
 
@@ -185,6 +195,7 @@ go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 | 全局路由挂载、登录态中间件           | `httpapi`                     |
 | 「我需要锁/缓存，不关心 Redis」      | `port` 接口 + `infra` 实现    |
 | 分页、统一 JSON 响应、通用 Gender 等 | `pkg`                         |
+| 结构化业务/任务/审计日志             | `pkg/logger`（Service/Job 打点） |
 | 仅某一业务用的算法                   | 留在该 `module`，不要进 `pkg` |
 | 表结构                               | `ent/schema`                  |
 | 进程启动参数、组装顺序               | `cmd/*`                       |
@@ -195,9 +206,10 @@ go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 
 1. **优先在对应 module 内闭环**；跨模块先谈 Service 接口，避免双向 import 实现细节。  
 2. **改缓存语义时** 保证在线路径与预热路径候选集一致（参见 `module/user/CACHE.md`）。  
-3. **生成代码**（`ent/*` 非 schema、`api/swagger`）不要手改业务逻辑；改源再生成。  
+3. **生成代码**（`ent/*` 非 schema、`docs/api/swagger`）不要手改业务逻辑；改源再生成。  
 4. **PR 粒度**：一个业务能力尽量带齐 service + handler + repo（及必要测试），便于评审。  
-5. **命名**：新 module 用小写业务名；HTTP 子包可用 `userhttp` 这类包名，避免与 `net/http` 冲突。
+5. **命名**：新 module 用小写业务名；HTTP 子包可用 `userhttp` 这类包名，避免与 `net/http` 冲突。  
+6. **日志**：新写路径用 `logger.Module` + `purpose` + 稳定 `event`；可预期 `BizError` 不打 Error；系统错误交给 `RespondError` 边界记一次（见 [logger README](internal/pkg/logger/README.md)）。
 
 ---
 
@@ -207,6 +219,7 @@ go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 | -------------------------------------------------------------- | ----------------------------------- |
 | [internal/module/README.md](internal/module/README.md)         | 业务模块目录约定                    |
 | [internal/pkg/README.md](internal/pkg/README.md)               | 公共库边界                          |
+| [internal/pkg/logger/README.md](internal/pkg/logger/README.md) | **结构化日志约定与 event 表**       |
 | [docs/REDIS_CACHE.md](docs/REDIS_CACHE.md)                     | **项目级 Redis / 缓存策略**（总览） |
 | [internal/module/user/CACHE.md](internal/module/user/CACHE.md) | 匹配查询缓存细节与流程图            |
 

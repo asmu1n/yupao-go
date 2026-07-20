@@ -246,6 +246,22 @@ MatchUsers(num, loginUser)
 
 ---
 
+## 6.1 相关日志（便于排障）
+
+实现使用 `internal/pkg/logger`（`module=user`）。常见 event：
+
+| event | purpose | 级别 | 说明 |
+|-------|---------|------|------|
+| `cache.match.miss` | cache | Debug | 在线匹配缓存未命中 |
+| `cache.match.invalidate_error` | cache | Warn | Update 后删 match key 失败 |
+| `warmup.lock_acquired` / `warmup.skip_lock` | job | Info | 预热抢锁成功 / 他节点占用跳过 |
+| `warmup.start` / `warmup.done` / `warmup.cancelled` | job | Info/Warn | 预热起止与取消 |
+| `warmup.load_error` / `warmup.key_error` / `warmup.error` | job（严重可 alert） | Error | 候选加载 / 单 key / 系统失败 |
+
+总约定见 [pkg/logger/README.md](../../pkg/logger/README.md)；Redis 总览见 [docs/REDIS_CACHE.md](../../../docs/REDIS_CACHE.md)。
+
+---
+
 ## 7. 设计约束（易踩坑）
 
 1. **不要**在预热里用子集候选、在线 miss 用全量用户（或反过来）却写同一 key。

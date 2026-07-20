@@ -2,6 +2,7 @@ package team
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"yupao-go/internal/module/user"
@@ -12,7 +13,12 @@ import (
 	"yupao-go/internal/port"
 )
 
-const joinLockKey = "yupao:join_team"
+// joinLockKey 按队伍互斥，避免并发 Join 超员/同队重复加入；不同 team 互不阻塞。
+// 同一用户跨多队并发导致「最多 5 队」的竞态概率低，暂不按 user 加锁。
+func joinLockKey(teamID int64) string {
+	return fmt.Sprintf("yupao:join_team:%d", teamID)
+}
+
 const joinLockTTL = 10 * time.Second
 
 // teamLog 队伍模块业务/审计日志。
@@ -310,7 +316,7 @@ func (s *Service) Join(ctx context.Context, p JoinParams, actionUserID int64) er
 		)
 		return nil
 	}
-	err = s.locker.RunWithLock(ctx, joinLockKey, joinLockTTL, doJoin)
+	err = s.locker.RunWithLock(ctx, joinLockKey(p.TeamID), joinLockTTL, doJoin)
 	if err == port.ErrLockFailed {
 		teamLog.Warn("team join busy",
 			logger.FieldPurpose, logger.PurposeBiz,
