@@ -357,6 +357,7 @@ func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID 
 		return []*TeamUserVO{}, nil
 	}
 
+	// 收集所有需要查询的用户ID以及队伍ID
 	ids := make([]int64, len(teams))
 	userMap := make(map[int64]*user.User)
 	for i, t := range teams {
@@ -366,6 +367,7 @@ func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID 
 		}
 	}
 
+	// 借助 map 去重用户ID
 	userIds := make([]int64, 0, len(userMap))
 	for uid := range userMap {
 		userIds = append(userIds, uid)
@@ -376,11 +378,11 @@ func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID 
 		return nil, err
 	}
 
+	// 批量查询用户信息，同时复用 userMap 录入数据
 	users, err := s.users.ListByIDs(ctx, userIds)
 	if err != nil {
 		return nil, err
 	}
-
 	for _, u := range users {
 		userMap[u.ID] = u
 	}
