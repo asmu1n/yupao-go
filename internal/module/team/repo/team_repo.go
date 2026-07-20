@@ -287,16 +287,19 @@ func (r *EntRepository) HasJoined(ctx context.Context, userID, teamID int64) (bo
 }
 
 func (r *EntRepository) CountMembersByTeamIDs(ctx context.Context, teamIDs []int64) (map[int64]int, error) {
+	// 维护字典表，key为teamID，value为成员数量
 	out := make(map[int64]int, len(teamIDs))
 	if len(teamIDs) == 0 {
 		return out, nil
 	}
+	// 查询所有 team 的成员情况
 	rows, err := r.client.UserTeam.Query().
 		Where(entuserteam.TeamIDIn(teamIDs...), entuserteam.IsDeleteEQ(0)).
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
+	// 统计每个 team 的成员数量
 	for _, row := range rows {
 		out[row.TeamID]++
 	}

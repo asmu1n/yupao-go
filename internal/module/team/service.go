@@ -23,7 +23,7 @@ type Service struct {
 
 // UserReader 读取用户信息（创建人展示、管理员判断）。
 type UserReader interface {
-	GetByID(ctx context.Context, id int64) (*user.User, error)
+	ListByIDs(ctx context.Context, ids []int64) ([]*user.User, error)
 }
 
 // NewService 构造队伍服务。
@@ -356,15 +356,35 @@ func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID 
 	if len(teams) == 0 {
 		return []*TeamUserVO{}, nil
 	}
+
 	ids := make([]int64, len(teams))
+	userMap := make(map[int64]*user.User)
 	for i, t := range teams {
 		ids[i] = t.ID
+		if t.UserID > 0 {
+			userMap[t.UserID] = nil
+		}
+	}
+
+	userIds := make([]int64, 0, len(userMap))
+	for uid := range userMap {
+		userIds = append(userIds, uid)
 	}
 
 	counts, err := s.repo.CountMembersByTeamIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
+
+	users, err := s.users.ListByIDs(ctx, userIds)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, u := range users {
+		userMap[u.ID] = u
+	}
+
 	var joined map[int64]struct{}
 	if loginUserID > 0 {
 		joined, err = s.repo.JoinedTeamIDs(ctx, loginUserID, ids)
@@ -390,11 +410,8 @@ func (s *Service) toTeamUserVOs(ctx context.Context, teams []*Team, loginUserID 
 		if joined != nil {
 			_, vo.HasJoin = joined[t.ID]
 		}
-		if t.UserID > 0 && s.users != nil {
-			u, err := s.users.GetByID(ctx, t.UserID)
-			if err != nil {
-				return nil, err
-			}
+		if t.UserID > 0 {
+			u := userMap[t.UserID]
 			if u != nil {
 				// Password 已 json:"-"，可直接返回
 				vo.CreateUser = u

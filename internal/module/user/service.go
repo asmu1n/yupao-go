@@ -95,6 +95,17 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
 	return u, nil
 }
 
+func (s *Service) ListByIDs(ctx context.Context, ids []int64) ([]*User, error) {
+	list, err := s.repo.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	if list == nil {
+		return nil, response.NewBizError(response.NotFound)
+	}
+	return list, nil
+}
+
 // Update 更新用户信息，管理员可改任意用户，普通用户仅可改自己
 func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID int64) error {
 	caller, err := s.repo.GetByID(ctx, callerID)
