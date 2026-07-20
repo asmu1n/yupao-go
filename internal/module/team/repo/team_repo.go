@@ -169,8 +169,8 @@ func (r *EntRepository) List(ctx context.Context, q team.QueryParams, includePri
 	return toDomainList(rows), nil
 }
 
-func (r *EntRepository) ListPage(ctx context.Context, q team.QueryParams) ([]*team.Team, int64, error) {
-	preds := buildListPreds(q, true)
+func (r *EntRepository) ListPage(ctx context.Context, q team.QueryParams, includePrivate bool) ([]*team.Team, int64, error) {
+	preds := buildListPreds(q, includePrivate)
 	query := r.client.Team.Query().Where(preds...)
 	total, err := r.client.Team.Query().Where(preds...).Count(ctx)
 	if err != nil {
@@ -218,18 +218,20 @@ func buildListPreds(q team.QueryParams, includePrivate bool) []predicate.Team {
 	if q.MaxNum != nil && *q.MaxNum > 0 {
 		preds = append(preds, entteam.MaxNumEQ(*q.MaxNum))
 	}
-	if q.UserID != nil && *q.UserID > 0 {
-		preds = append(preds, entteam.UserIDEQ(*q.UserID))
+	if q.OwnerID != nil && *q.OwnerID > 0 {
+		preds = append(preds, entteam.UserIDEQ(*q.OwnerID))
 	}
 
-	// status 为 nil 时不过滤状态（用于「我创建的/我加入的」）
+	// status 为 nil 时，默认仅返回公开 / 加密；显式允许时才包含私有。
 	if q.Status != nil {
 		status := *q.Status
 		if !includePrivate && status == types.TeamStatusPrivate {
-			preds = append(preds, entteam.StatusEQ(types.TeamStatusPublic))
+			preds = append(preds, entteam.IDEQ(0))
 		} else {
 			preds = append(preds, entteam.StatusEQ(status))
 		}
+	} else if !includePrivate {
+		preds = append(preds, entteam.StatusIn(types.TeamStatusPublic, types.TeamStatusSecret))
 	}
 
 	return preds

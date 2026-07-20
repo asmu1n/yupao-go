@@ -115,7 +115,7 @@ func (s *Service) Update(ctx context.Context, targetID int64, u *User, callerID 
 	if caller == nil {
 		return response.NewBizError(response.NotFound)
 	}
-	isAdmin := s.isAdmin(caller)
+	isAdmin := s.IsAdmin(caller)
 
 	if targetID <= 0 {
 		return response.NewBizError(response.ParamsError)
@@ -169,8 +169,8 @@ func (s *Service) SearchByTags(ctx context.Context, tagNames []string) ([]*User,
 	return result, nil
 }
 
-// isAdmin 判断用户是否为管理员
-func (s *Service) isAdmin(u *User) bool {
+// IsAdmin 判断用户是否为管理员
+func (s *Service) IsAdmin(u *User) bool {
 	return u != nil && u.UserRole == RoleAdmin
 }
 

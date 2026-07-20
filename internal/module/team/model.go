@@ -3,7 +3,6 @@ package team
 import (
 	"time"
 
-	"yupao-go/internal/module/user"
 	"yupao-go/internal/pkg/page"
 	"yupao-go/internal/pkg/types"
 )
@@ -40,9 +39,17 @@ type TeamUserVO struct {
 	Status      types.TeamStatus `json:"status"`
 	CreateTime  time.Time        `json:"createTime"`
 	UpdateTime  time.Time        `json:"updateTime"`
-	CreateUser  *user.User       `json:"createUser,omitempty"`
+	CreateUser  *TeamCreatorVO   `json:"createUser,omitempty"`
 	HasJoinNum  int              `json:"hasJoinNum"`
 	HasJoin     bool             `json:"hasJoin"`
+}
+
+// TeamCreatorVO 队伍创建人公开展示信息。
+type TeamCreatorVO struct {
+	ID        int64          `json:"id"`
+	Username  *string        `json:"username,omitempty"`
+	AvatarURL *string        `json:"avatarUrl,omitempty"`
+	Gender    *types.Gender  `json:"gender,omitempty"`
 }
 
 // AddParams 创建队伍。
@@ -51,7 +58,7 @@ type AddParams struct {
 	Description *string           `json:"description" binding:"omitempty,max=512"`
 	MaxNum      int               `json:"maxNum" binding:"required,min=1,max=20"`
 	ExpireTime  *time.Time        `json:"expireTime" binding:"required"`
-	Status      *types.TeamStatus `json:"status"`
+	Status      *types.TeamStatus `json:"status" binding:"omitempty,oneof=0 1 2"`
 	Password    *string           `json:"password" binding:"omitempty,max=32"`
 }
 
@@ -61,7 +68,7 @@ type UpdateParams struct {
 	Name        *string           `json:"name" binding:"omitempty,max=20"`
 	Description *string           `json:"description" binding:"omitempty,max=512"`
 	ExpireTime  *time.Time        `json:"expireTime"`
-	Status      *types.TeamStatus `json:"status"`
+	Status      *types.TeamStatus `json:"status" binding:"omitempty,oneof=0 1 2"`
 	Password    *string           `json:"password" binding:"omitempty,max=32"`
 }
 
@@ -81,7 +88,7 @@ type DeleteParams struct {
 	ID int64 `json:"id" binding:"required,gt=0"`
 }
 
-// QueryParams 队伍查询条件。
+// QueryParams 通用队伍查询条件
 type QueryParams struct {
 	page.PageRequest
 	ID          *int64            `form:"id" json:"id"`
@@ -90,6 +97,24 @@ type QueryParams struct {
 	Name        string            `form:"name" json:"name"`
 	Description string            `form:"description" json:"description"`
 	MaxNum      *int              `form:"maxNum" json:"maxNum"`
-	UserID      *int64            `form:"userId" json:"userId"`
-	Status      *types.TeamStatus `form:"status" json:"status"`
+	OwnerID     *int64            `form:"ownerId" json:"ownerId"`
+	Status      *types.TeamStatus `form:"status" json:"status" binding:"omitempty,oneof=0 1 2"`
+}
+
+// MyCreateQueryParams 我创建队伍查询条件。
+type MyCreateQueryParams struct {
+	Status      *types.TeamStatus `form:"status" json:"status" binding:"omitempty,oneof=0 1 2"`
+	SearchText  string            `form:"searchText" json:"searchText"`
+	Name        string            `form:"name" json:"name"`
+	Description string            `form:"description" json:"description"`
+	MaxNum      *int              `form:"maxNum" json:"maxNum"`
+}
+
+// MyJoinQueryParams 我加入队伍查询条件。
+type MyJoinQueryParams struct {
+	Status      *types.TeamStatus `form:"status" json:"status" binding:"omitempty,oneof=0 1 2"`
+	SearchText  string            `form:"searchText" json:"searchText"`
+	Name        string            `form:"name" json:"name"`
+	Description string            `form:"description" json:"description"`
+	MaxNum      *int              `form:"maxNum" json:"maxNum"`
 }
