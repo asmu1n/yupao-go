@@ -4,8 +4,9 @@
 
 | 包 | 说明 |
 |----|------|
-| `page` | 分页请求 / 响应 |
+| `page` | 标准列表分页（Request/Response；Repo 返回 items+total，Service 组装） |
 | `response` | 统一 API 响应体、业务错误码、Gin 写出辅助 |
 | `types` | 跨模块基础类型（如 Gender、TeamStatus） |
+| `logger` | 薄封装 slog：`Init` 读环境变量，业务用 `Info`/`Module` + purpose/event |
 
 业务模块代码在 `internal/module/`；基础设施在 `internal/infra/`；端口在 `internal/port/`。

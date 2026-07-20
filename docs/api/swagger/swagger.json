@@ -842,7 +842,7 @@
                     "maxLength": 32
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 }
             }
         },
@@ -904,7 +904,7 @@
                     "type": "string"
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 },
                 "updateTime": {
                     "type": "string"
@@ -946,7 +946,7 @@
                     "type": "string"
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 },
                 "updateTime": {
                     "type": "string"
@@ -981,7 +981,7 @@
                     "maxLength": 32
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/types.TeamStatus"
                 }
             }
         },
@@ -995,6 +995,29 @@
             "x-enum-varnames": [
                 "GenderMale",
                 "GenderFemale"
+            ]
+        },
+        "types.TeamStatus": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-comments": {
+                "TeamStatusPrivate": "私有",
+                "TeamStatusPublic": "公开",
+                "TeamStatusSecret": "加密"
+            },
+            "x-enum-descriptions": [
+                "公开",
+                "私有",
+                "加密"
+            ],
+            "x-enum-varnames": [
+                "TeamStatusPublic",
+                "TeamStatusPrivate",
+                "TeamStatusSecret"
             ]
         },
         "user.LoginParams": {

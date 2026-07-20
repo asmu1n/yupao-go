@@ -2,10 +2,10 @@ package user
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
+	"yupao-go/internal/pkg/logger"
 	"yupao-go/internal/port"
 )
 
@@ -19,6 +19,8 @@ const (
 // warmUpNums 预热时优先填充的推荐数量；与接口常见取值对齐，其余 num 走在线懒加载。
 var warmUpNums = []int{10, 20}
 
+var warmupLog = logger.Module("user").With(logger.FieldPurpose, logger.PurposeJob)
+
 // WarmUpMatchUsers 定时预热匹配缓存的入口。
 // 通过分布式锁保证多实例下仅一个节点执行；抢锁失败则静默跳过。
 func (s *Service) WarmUpMatchUsers(ctx context.Context) {
@@ -26,52 +28,64 @@ func (s *Service) WarmUpMatchUsers(ctx context.Context) {
 		return
 	}
 
-	// 尝试从 redis 获取分布式锁
 	err := s.locker.RunWithLock(ctx, lockKey, lockTTL, func() error {
-		log.Println("[Cron] 成功抢到分布式锁，开始执行预热...")
+		warmupLog.Info("warmup acquired lock",
+			logger.FieldEvent, "warmup.lock_acquired",
+		)
 		s.warmUpMatchTask(ctx)
 		return nil
 	})
 
-	// 错误处理：如果没有抢到锁，就静默忽略
 	if err == port.ErrLockFailed {
-		log.Println("[Cron] 其他节点正在执行预热，当前节点主动跳过")
+		warmupLog.Info("warmup skipped, lock held by another instance",
+			logger.FieldEvent, "warmup.skip_lock",
+		)
 		return
-	} else if err != nil {
-		log.Printf("[Cron] 预热任务发生系统异常: %v", err)
+	}
+	if err != nil {
+		warmupLog.Error("warmup system error",
+			logger.FieldEvent, "warmup.error",
+			logger.FieldErr, err,
+			logger.FieldPurpose, logger.PurposeAlert,
+		)
 	}
 }
 
 // warmUpMatchTask 加载活跃候选池，并对其中用户并发预热匹配缓存。
-// 候选池与在线 MatchUsers 相同，保证写入 key 的语义一致。
 func (s *Service) warmUpMatchTask(ctx context.Context) {
 	s.warmUpLock.Lock()
 	defer s.warmUpLock.Unlock()
 
-	log.Println("开始预热匹配用户缓存")
+	start := time.Now()
+	warmupLog.Info("warmup started",
+		logger.FieldEvent, "warmup.start",
+	)
 
-	// 获取活跃用户
 	candidates, err := s.loadActiveCandidates(ctx)
 	if err != nil {
-		log.Printf("预热匹配用户缓存失败，加载活跃用户失败: %v", err)
+		warmupLog.Error("warmup load candidates failed",
+			logger.FieldEvent, "warmup.load_error",
+			logger.FieldErr, err,
+		)
 		return
 	}
 
 	if len(candidates) == 0 {
-		log.Println("预热匹配用户缓存结束: 无活跃用户")
+		warmupLog.Info("warmup finished, no active users",
+			logger.FieldEvent, "warmup.done",
+			"candidates", 0,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
 		return
 	}
 
-	// 创建工作通道
 	jobs := make(chan *User, len(candidates))
 	var wg sync.WaitGroup
 
-	// 启动多个工作子协程
 	for i := 0; i < warmWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// 多个子协程等待目标用户
 			for u := range jobs {
 				if ctx.Err() != nil {
 					return
@@ -85,17 +99,25 @@ func (s *Service) warmUpMatchTask(ctx context.Context) {
 		if ctx.Err() != nil {
 			break
 		}
-		// 发送目标用户去启动任务
 		jobs <- u
 	}
 	close(jobs)
 	wg.Wait()
 
 	if err := ctx.Err(); err != nil {
-		log.Printf("预热匹配用户缓存结束（提前取消）: %v", err)
+		warmupLog.Warn("warmup cancelled",
+			logger.FieldEvent, "warmup.cancelled",
+			logger.FieldErr, err,
+			"candidates", len(candidates),
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
 		return
 	}
-	log.Printf("预热匹配用户缓存结束: 用户数=%d", len(candidates))
+	warmupLog.Info("warmup finished",
+		logger.FieldEvent, "warmup.done",
+		"candidates", len(candidates),
+		"duration_ms", time.Since(start).Milliseconds(),
+	)
 }
 
 // warmUpSingleUser 为单个用户补齐常见 num 的匹配缓存（仅填冷 key，不强制刷新）。
@@ -110,12 +132,17 @@ func (s *Service) warmUpSingleUser(ctx context.Context, loginUser *User, candida
 		}
 		key := matchCacheKey(loginUser.ID, num)
 		var dst []*User
-		// Once 补冷；算法入口与在线 miss 相同（rankMatches + 同一 candidates）。
 		err := s.cache.Once(ctx, key, matchCacheTTL, &dst, func() (any, error) {
 			return s.rankMatches(ctx, num, loginUser, candidates)
 		})
 		if err != nil {
-			log.Printf("预热匹配缓存失败 key=%s: %v", key, err)
+			warmupLog.Error("warmup single key failed",
+				logger.FieldEvent, "warmup.key_error",
+				logger.FieldErr, err,
+				"key", key,
+				"user_id", loginUser.ID,
+				"num", num,
+			)
 		}
 	}
 }
@@ -129,5 +156,12 @@ func (s *Service) invalidateMatchCache(ctx context.Context, userID int64) {
 	for n := 1; n <= maxMatchNum; n++ {
 		keys = append(keys, matchCacheKey(userID, n))
 	}
-	_ = s.cache.Delete(ctx, keys...)
+	if err := s.cache.Delete(ctx, keys...); err != nil {
+		logger.Module("user").Warn("invalidate match cache failed",
+			logger.FieldPurpose, logger.PurposeCache,
+			logger.FieldEvent, "cache.match.invalidate_error",
+			logger.FieldErr, err,
+			"user_id", userID,
+		)
+	}
 }

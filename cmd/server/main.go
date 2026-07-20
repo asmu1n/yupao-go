@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +17,7 @@ import (
 	teamrepo "yupao-go/internal/module/team/repo"
 	"yupao-go/internal/module/user"
 	userrepo "yupao-go/internal/module/user/repo"
+	"yupao-go/internal/pkg/logger"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -38,6 +38,8 @@ import (
 // @description Session cookie authentication. Example: session=your-session-id
 
 func main() {
+	logger.Init()
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -45,22 +47,22 @@ func main() {
 
 	db, err := database.New()
 	if err != nil {
-		log.Fatalf("connect db: %v", err)
+		logger.Fatal("connect db failed", logger.FieldErr, err)
 	}
 	defer db.Close()
 
 	if err := db.Migrate(ctx); err != nil {
-		log.Fatalf("migrate: %v", err)
+		logger.Fatal("migrate failed", logger.FieldErr, err)
 	}
 
 	store, err := redis.NewSessionStore()
 	if err != nil {
-		log.Fatalf("failed load redis: %v", err)
+		logger.Fatal("load redis session store failed", logger.FieldErr, err)
 	}
 
 	redisClient, err := redis.NewClient()
 	if err != nil {
-		log.Fatalf("connect redis: %v", err)
+		logger.Fatal("connect redis failed", logger.FieldErr, err)
 	}
 	defer redisClient.Close()
 
@@ -69,32 +71,41 @@ func main() {
 	userSvc := user.NewService(userrepo.New(db.Client), cacheClient, locker)
 	teamSvc := team.NewService(teamrepo.New(db.Client), userSvc, locker)
 
-	// 初始化定时调度器
 	sched := scheduler.New()
-	// 每天 03:00 预热；候选池与在线 MatchUsers 一致（近 matchActiveWindow 活跃用户）
+	// 每天 03:00 预热；候选池与在线 MatchUsers 一致
 	if _, err := sched.Schedule("0 0 3 * * *", func() {
 		taskCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 		userSvc.WarmUpMatchUsers(taskCtx)
 	}); err != nil {
-		log.Fatalf("schedule warmup: %v", err)
+		logger.Fatal("schedule warmup failed", logger.FieldErr, err)
 	}
 	sched.Start()
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		if err := sched.Stop(shutdownCtx); err != nil {
-			log.Printf("scheduler stop: %v", err)
+			logger.Warn("scheduler stop",
+				logger.FieldPurpose, logger.PurposeJob,
+				logger.FieldModule, "scheduler",
+				logger.FieldEvent, "cron.stop_error",
+				logger.FieldErr, err,
+			)
 		}
 	}()
 
-	// 使用 session 中间件，指定 cookie 名称，以及所使用的存储中心
-	// 中间件闭包函数本身接收了 请求上下文，赋予 store 读取 request.cookie 和 操作 ResponseWriter 的能力
 	r.Use(sessions.Sessions("session", store))
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	httpapi.RegisterRouter(r, userSvc, teamSvc)
 
-	log.Fatal(r.Run(":8080"))
+	logger.Info("http server starting",
+		logger.FieldPurpose, logger.PurposeInfra,
+		logger.FieldEvent, "http.listen",
+		"addr", ":8080",
+	)
+	if err := r.Run(":8080"); err != nil {
+		logger.Fatal("http server stopped", logger.FieldErr, err)
+	}
 }

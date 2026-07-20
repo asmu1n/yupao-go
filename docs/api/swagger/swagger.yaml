@@ -26,7 +26,7 @@ definitions:
         maxLength: 32
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/types.TeamStatus'
     required:
     - expireTime
     - maxNum
@@ -70,7 +70,7 @@ definitions:
       name:
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/types.TeamStatus'
       updateTime:
         type: string
       userId:
@@ -98,7 +98,7 @@ definitions:
       name:
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/types.TeamStatus'
       updateTime:
         type: string
       userId:
@@ -120,7 +120,7 @@ definitions:
         maxLength: 32
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/types.TeamStatus'
     required:
     - id
     type: object
@@ -133,6 +133,24 @@ definitions:
     x-enum-varnames:
     - GenderMale
     - GenderFemale
+  types.TeamStatus:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-comments:
+      TeamStatusPrivate: 私有
+      TeamStatusPublic: 公开
+      TeamStatusSecret: 加密
+    x-enum-descriptions:
+    - 公开
+    - 私有
+    - 加密
+    x-enum-varnames:
+    - TeamStatusPublic
+    - TeamStatusPrivate
+    - TeamStatusSecret
   user.LoginParams:
     properties:
       userAccount:
