@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"yupao-go/internal/pkg/logger"
 	"yupao-go/internal/port"
 )
 
@@ -36,7 +37,12 @@ func (s *Service) MatchUsers(ctx context.Context, loginUser *User, num int) ([]*
 	}
 
 	compute := func() ([]*User, error) {
-		fmt.Println("未命中缓存")
+		logger.Module("user").Debug("match cache miss",
+			logger.FieldPurpose, logger.PurposeCache,
+			logger.FieldEvent, "cache.match.miss",
+			"user_id", loginUser.ID,
+			"num", num,
+		)
 		return s.match(ctx, loginUser, num)
 	}
 

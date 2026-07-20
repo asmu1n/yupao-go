@@ -7,9 +7,8 @@ import (
 	"yupao-go/ent"
 	"yupao-go/ent/predicate"
 	entuser "yupao-go/ent/user"
-	"yupao-go/internal/pkg/page"
-	"yupao-go/internal/pkg/types"
 	"yupao-go/internal/module/user"
+	"yupao-go/internal/pkg/types"
 )
 
 // EntRepository 基于 ent 的用户仓储实现。
@@ -102,18 +101,23 @@ func (r *EntRepository) ListAll(ctx context.Context) ([]*user.User, error) {
 	return toDomainList(rows), nil
 }
 
-func (r *EntRepository) ListPage(ctx context.Context, params user.QueryParams) (*page.PageResponse[*user.User], error) {
-	query := r.client.User.Query()
-	query = query.Offset(params.PageRequest.Offset()).Limit(params.PageRequest.Limit())
-	rows, err := query.Where(entuser.IsDeleteEQ(0)).All(ctx)
+func (r *EntRepository) ListPage(ctx context.Context, params user.QueryParams) ([]*user.User, int64, error) {
+	pred := entuser.IsDeleteEQ(0)
+
+	total, err := r.client.User.Query().Where(pred).Count(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	total, err := r.client.User.Query().Where(entuser.IsDeleteEQ(0)).Count(ctx)
+	rows, err := r.client.User.Query().
+		Where(pred).
+		Order(ent.Desc(entuser.FieldID)).
+		Offset(params.PageRequest.Offset()).
+		Limit(params.PageRequest.Limit()).
+		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return page.NewPageResponse(toDomainList(rows), int64(total), params.PageRequest), nil
+	return toDomainList(rows), int64(total), nil
 }
 
 func (r *EntRepository) ListByIDs(ctx context.Context, ids []int64) ([]*user.User, error) {

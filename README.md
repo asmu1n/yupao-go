@@ -129,6 +129,7 @@ docker compose -f docker-compose.dev.yml up -d
 ### 5.3 运行 API
 
 ```bash
+# 可选：LOG_LEVEL=debug|info|warn|error  LOG_FORMAT=text|json  ENV=prod（prod 默认 json）
 go run ./cmd/server
 # 默认 :8080
 # Swagger：http://localhost:8080/swagger/index.html
