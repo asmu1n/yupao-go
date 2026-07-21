@@ -13,16 +13,21 @@ type Repository interface {
 	Update(ctx context.Context, t *Team) error
 	// SoftDeleteTeam 逻辑删除队伍。
 	SoftDeleteTeam(ctx context.Context, id int64) error
-	// SoftDeleteTeamAndMembers 解散：逻辑删除队伍及全部成员关系（事务）。
-	SoftDeleteTeamAndMembers(ctx context.Context, teamID int64) error
+
+	// SoftDeleteTeamAndMembersByLeader 锁定 team 并校验队长后解散；失败时返回 BizError（不存在 / 无权限等）。
+	SoftDeleteTeamAndMembersByLeader(ctx context.Context, teamID, leaderID int64) error
 
 	CountCreatedByUser(ctx context.Context, userID int64) (int64, error)
 	List(ctx context.Context, q QueryParams, includePrivate bool) ([]*Team, error)
 	ListPage(ctx context.Context, q QueryParams, includePrivate bool) ([]*Team, int64, error)
 
+	// AddMember 写入有效成员关系。
 	AddMember(ctx context.Context, userID, teamID int64, joinTime time.Time) error
 	// SoftDeleteMember 逻辑删除单条成员关系。
 	SoftDeleteMember(ctx context.Context, userID, teamID int64) error
+	// QuitMember 事务内锁定 team 行，原子处理退出 / 最后一人解散 / 队长移交。
+	// 可预期失败直接返回 BizError（队伍不存在、未加入等）。
+	QuitMember(ctx context.Context, teamID, userID int64) (*QuitResult, error)
 	CountMembers(ctx context.Context, teamID int64) (int64, error)
 	CountUserMemberships(ctx context.Context, userID int64) (int64, error)
 	HasJoined(ctx context.Context, userID, teamID int64) (bool, error)
@@ -32,10 +37,8 @@ type Repository interface {
 	JoinedTeamIDs(ctx context.Context, userID int64, teamIDs []int64) (map[int64]struct{}, error)
 	// ListTeamIDsByUser 用户加入的全部队伍 ID（未删除）。
 	ListTeamIDsByUser(ctx context.Context, userID int64) ([]int64, error)
-	// ListMembersByTeamOrdered 按 id 升序取成员，用于队长移交。
+	// ListMembersByTeamOrdered 按 id 升序取成员。
 	ListMembersByTeamOrdered(ctx context.Context, teamID int64, limit int) ([]Member, error)
-	// TransferLeaderAndRemoveMember 移交队长并移除原队长成员关系（事务）。
-	TransferLeaderAndRemoveMember(ctx context.Context, teamID, oldLeaderID, newLeaderID int64) error
 }
 
 // Member 队伍成员关系简要信息。

@@ -14,6 +14,24 @@ const (
 	minTeamMembers = 1
 )
 
+// QuitOutcome 退出操作在库内的实际结果。
+type QuitOutcome int
+
+const (
+	// QuitOutcomeLeft 普通成员退出，队伍仍在。
+	QuitOutcomeLeft QuitOutcome = iota
+	// QuitOutcomeDisbanded 最后一人退出，队伍解散。
+	QuitOutcomeDisbanded
+	// QuitOutcomeTransferred 队长退出并移交继任者。
+	QuitOutcomeTransferred
+)
+
+// QuitResult 退出队伍的结构化结果（供审计日志使用）。
+type QuitResult struct {
+	Outcome     QuitOutcome
+	NewLeaderID int64 // QuitOutcomeTransferred 时有效
+}
+
 // Team 队伍领域模型。
 type Team struct {
 	ID          int64            `json:"id"`

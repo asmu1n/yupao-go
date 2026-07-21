@@ -338,31 +338,29 @@ func (s *Service) Join(ctx context.Context, p JoinParams, actionUserID int64) er
 	return nil
 }
 
-// Quit 退出队伍；仅剩一人时解散；队长退出则移交最早加入的成员。
+// Quit 退出队伍；事务内锁定 team 行，原子处理退出 / 最后一人解散 / 队长移交。
 func (s *Service) Quit(ctx context.Context, p QuitParams, targetUserID int64) error {
-	t, err := s.repo.GetByID(ctx, p.TeamID)
-	if err != nil {
-		return err
-	}
-	if t == nil {
-		return response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
-	}
-	has, err := s.repo.HasJoined(ctx, targetUserID, p.TeamID)
-	if err != nil {
-		return err
-	}
-	if !has {
-		return response.NewBizErrorWithDetail(response.ParamsError, "未加入队伍")
+	if p.TeamID <= 0 {
+		return response.NewBizError(response.ParamsError)
 	}
 
-	n, err := s.repo.CountMembers(ctx, p.TeamID)
+	result, err := s.repo.QuitMember(ctx, p.TeamID, targetUserID)
 	if err != nil {
+		// 移交失败等系统级业务错误打 alert，其余 BizError 直接上抛
+		if be, ok := err.(*response.BizError); ok && be.BizCode() == response.SystemError.Biz {
+			teamLog.Error("transfer leader failed",
+				logger.FieldPurpose, logger.PurposeAlert,
+				logger.FieldEvent, "team.transfer_leader_error",
+				"team_id", p.TeamID,
+				"user_id", targetUserID,
+				"err", err.Error(),
+			)
+		}
 		return err
 	}
-	if n <= 1 {
-		if err := s.repo.SoftDeleteTeamAndMembers(ctx, p.TeamID); err != nil {
-			return err
-		}
+
+	switch result.Outcome {
+	case QuitOutcomeDisbanded:
 		teamLog.Info("team disbanded on quit",
 			logger.FieldPurpose, logger.PurposeAudit,
 			logger.FieldEvent, "team.disbanded",
@@ -370,72 +368,31 @@ func (s *Service) Quit(ctx context.Context, p QuitParams, targetUserID int64) er
 			"user_id", targetUserID,
 			"reason", "last_member_quit",
 		)
-		return nil
-	}
-
-	if t.UserID == targetUserID {
-		// 移交队长：按成员关系 id 升序，取第一个非当前队长的成员（最早加入者优先）
-		members, err := s.repo.ListMembersByTeamOrdered(ctx, p.TeamID, 0)
-		if err != nil {
-			return err
-		}
-		var next int64
-		for _, m := range members {
-			if m.UserID != targetUserID {
-				next = m.UserID
-				break
-			}
-		}
-		if next == 0 {
-			teamLog.Error("transfer leader failed: no successor",
-				logger.FieldPurpose, logger.PurposeAlert,
-				logger.FieldEvent, "team.transfer_leader_error",
-				"team_id", p.TeamID,
-				"user_id", targetUserID,
-			)
-			return response.NewBizError(response.SystemError)
-		}
-		if err := s.repo.TransferLeaderAndRemoveMember(ctx, p.TeamID, targetUserID, next); err != nil {
-			return err
-		}
+	case QuitOutcomeTransferred:
 		teamLog.Info("leader quit and transferred",
 			logger.FieldPurpose, logger.PurposeAudit,
 			logger.FieldEvent, "team.leader_transferred",
 			"team_id", p.TeamID,
 			"user_id", targetUserID,
-			"new_leader_id", next,
+			"new_leader_id", result.NewLeaderID,
 		)
-		return nil
+	default:
+		teamLog.Info("team quit",
+			logger.FieldPurpose, logger.PurposeAudit,
+			logger.FieldEvent, "team.quit",
+			"team_id", p.TeamID,
+			"user_id", targetUserID,
+		)
 	}
-
-	if err := s.repo.SoftDeleteMember(ctx, targetUserID, p.TeamID); err != nil {
-		return err
-	}
-	teamLog.Info("team quit",
-		logger.FieldPurpose, logger.PurposeAudit,
-		logger.FieldEvent, "team.quit",
-		"team_id", p.TeamID,
-		"user_id", targetUserID,
-	)
 	return nil
 }
 
-// Delete 队长解散队伍。
+// Delete 队长解散队伍（事务内锁定 team 并校验队长身份）。
 func (s *Service) Delete(ctx context.Context, teamID, actionUserID int64) error {
 	if teamID <= 0 {
 		return response.NewBizError(response.ParamsError)
 	}
-	t, err := s.repo.GetByID(ctx, teamID)
-	if err != nil {
-		return err
-	}
-	if t == nil {
-		return response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
-	}
-	if t.UserID != actionUserID {
-		return response.NewBizErrorWithDetail(response.NoAuth, "无访问权限")
-	}
-	if err := s.repo.SoftDeleteTeamAndMembers(ctx, teamID); err != nil {
+	if err := s.repo.SoftDeleteTeamAndMembersByLeader(ctx, teamID, actionUserID); err != nil {
 		return err
 	}
 	teamLog.Info("team deleted",

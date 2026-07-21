@@ -10,6 +10,7 @@ import (
 	entteam "yupao-go/ent/team"
 	entuserteam "yupao-go/ent/userteam"
 	"yupao-go/internal/module/team"
+	"yupao-go/internal/pkg/response"
 	"yupao-go/internal/pkg/types"
 )
 
@@ -126,7 +127,8 @@ func (r *EntRepository) SoftDeleteTeam(ctx context.Context, id int64) error {
 	return err
 }
 
-func (r *EntRepository) SoftDeleteTeamAndMembers(ctx context.Context, teamID int64) error {
+// SoftDeleteTeamAndMembersByLeader 锁定队伍并校验队长后解散。
+func (r *EntRepository) SoftDeleteTeamAndMembersByLeader(ctx context.Context, teamID, leaderID int64) error {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
@@ -137,17 +139,14 @@ func (r *EntRepository) SoftDeleteTeamAndMembers(ctx context.Context, teamID int
 		}
 	}()
 
-	_, err = tx.UserTeam.Update().
-		Where(entuserteam.TeamIDEQ(teamID), entuserteam.IsDeleteEQ(0)).
-		SetIsDelete(1).
-		Save(ctx)
+	t, err := lockActiveTeam(ctx, tx, teamID)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Team.UpdateOneID(teamID).
-		SetIsDelete(1).
-		Save(ctx)
-	if err != nil {
+	if t.UserID != leaderID {
+		return response.NewBizErrorWithDetail(response.NoAuth, "无访问权限")
+	}
+	if err = softDeleteTeamAndMembersTx(ctx, tx, teamID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -185,6 +184,38 @@ func (r *EntRepository) ListPage(ctx context.Context, q team.QueryParams, includ
 		return nil, 0, err
 	}
 	return toDomainList(rows), int64(total), nil
+}
+
+// lockActiveTeam 在事务内以 FOR UPDATE 锁定未删除的队伍行。
+func lockActiveTeam(ctx context.Context, tx *ent.Tx, teamID int64) (*ent.Team, error) {
+	row, err := tx.Team.Query().
+		Where(entteam.IDEQ(teamID), entteam.IsDeleteEQ(0)).
+		ForUpdate().
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, response.NewBizErrorWithDetail(response.NotFound, "队伍不存在")
+		}
+		return nil, err
+	}
+	return row, nil
+}
+
+// softDeleteTeamAndMembersTx 软删全部有效成员并软删队伍（调用方已持有 team 行锁）。
+func softDeleteTeamAndMembersTx(ctx context.Context, tx *ent.Tx, teamID int64) error {
+	if err := tx.UserTeam.Update().
+		Where(entuserteam.TeamIDEQ(teamID), entuserteam.IsDeleteEQ(0)).
+		SetIsDelete(1).
+		Exec(ctx); err != nil {
+		return err
+	}
+	if err := tx.Team.UpdateOneID(teamID).
+		Where(entteam.IsDeleteEQ(0)).
+		SetIsDelete(1).
+		Exec(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func buildListPreds(q team.QueryParams, includePrivate bool) []predicate.Team {
@@ -367,10 +398,11 @@ func (r *EntRepository) ListMembersByTeamOrdered(ctx context.Context, teamID int
 	return out, nil
 }
 
-func (r *EntRepository) TransferLeaderAndRemoveMember(ctx context.Context, teamID, oldLeaderID, newLeaderID int64) error {
+// QuitMember 事务内锁定 team，原子完成退出 / 解散 / 队长移交。
+func (r *EntRepository) QuitMember(ctx context.Context, teamID, userID int64) (*team.QuitResult, error) {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		if err != nil {
@@ -378,24 +410,114 @@ func (r *EntRepository) TransferLeaderAndRemoveMember(ctx context.Context, teamI
 		}
 	}()
 
-	_, err = tx.Team.UpdateOneID(teamID).
-		SetUserID(newLeaderID).
-		Save(ctx)
+	// 锁定队伍行
+	t, err := lockActiveTeam(ctx, tx, teamID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = tx.UserTeam.Update().
+
+	// 查询是否在队伍中
+	has, err := tx.UserTeam.Query().
 		Where(
-			entuserteam.UserIDEQ(oldLeaderID),
+			entuserteam.UserIDEQ(userID),
+			entuserteam.TeamIDEQ(teamID),
+			entuserteam.IsDeleteEQ(0),
+		).
+		Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !has {
+		return nil, response.NewBizErrorWithDetail(response.ParamsError, "未加入队伍")
+	}
+
+	// 查询队伍中剩余成员数量
+	n, err := tx.UserTeam.Query().
+		Where(entuserteam.TeamIDEQ(teamID), entuserteam.IsDeleteEQ(0)).
+		Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 最后一人退出：解散队伍
+	if n <= 1 {
+		if err = softDeleteTeamAndMembersTx(ctx, tx, teamID); err != nil {
+			return nil, err
+		}
+		if err = tx.Commit(); err != nil {
+			return nil, err
+		}
+		return &team.QuitResult{Outcome: team.QuitOutcomeDisbanded}, nil
+	}
+
+	// 队长退出：在锁内选继任者并移交
+	if t.UserID == userID {
+		members, err := tx.UserTeam.Query().
+			Where(entuserteam.TeamIDEQ(teamID), entuserteam.IsDeleteEQ(0)).
+			Order(ent.Asc(entuserteam.FieldID)).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		var next int64
+		for _, m := range members {
+			if m.UserID != userID {
+				next = m.UserID
+				break
+			}
+		}
+		if next == 0 {
+			return nil, response.NewBizError(response.SystemError)
+		}
+
+		if err = tx.Team.UpdateOneID(teamID).
+			Where(entteam.IsDeleteEQ(0), entteam.UserIDEQ(userID)).
+			SetUserID(next).
+			Exec(ctx); err != nil {
+			if ent.IsNotFound(err) {
+				return nil, response.NewBizError(response.SystemError)
+			}
+			return nil, err
+		}
+		nUpd, err := tx.UserTeam.Update().
+			Where(
+				entuserteam.UserIDEQ(userID),
+				entuserteam.TeamIDEQ(teamID),
+				entuserteam.IsDeleteEQ(0),
+			).
+			SetIsDelete(1).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if nUpd == 0 {
+			return nil, response.NewBizErrorWithDetail(response.ParamsError, "未加入队伍")
+		}
+		if err = tx.Commit(); err != nil {
+			return nil, err
+		}
+		return &team.QuitResult{Outcome: team.QuitOutcomeTransferred, NewLeaderID: next}, nil
+	}
+
+	// 普通成员退出
+	nUpd, err := tx.UserTeam.Update().
+		Where(
+			entuserteam.UserIDEQ(userID),
 			entuserteam.TeamIDEQ(teamID),
 			entuserteam.IsDeleteEQ(0),
 		).
 		SetIsDelete(1).
 		Save(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return tx.Commit()
+	if nUpd == 0 {
+		return nil, response.NewBizErrorWithDetail(response.ParamsError, "未加入队伍")
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &team.QuitResult{Outcome: team.QuitOutcomeLeft}, nil
 }
 
 func toDomain(e *ent.Team) *team.Team {

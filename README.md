@@ -65,7 +65,8 @@ yupao-go/
 更细的模块约定见：[`internal/module/README.md`](internal/module/README.md)  
 公共库约定见：[`internal/pkg/README.md`](internal/pkg/README.md)  
 结构化日志见：[`internal/pkg/logger/README.md`](internal/pkg/logger/README.md)  
-匹配缓存细节见：[`internal/module/user/CACHE.md`](internal/module/user/CACHE.md)
+匹配缓存细节见：[`internal/module/user/CACHE.md`](internal/module/user/CACHE.md)  
+队伍事务与行锁见：[`internal/module/team/TX_LOCK.md`](internal/module/team/TX_LOCK.md)
 
 ---
 
@@ -222,5 +223,6 @@ go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 | [internal/pkg/logger/README.md](internal/pkg/logger/README.md) | **结构化日志约定与 event 表**       |
 | [docs/REDIS_CACHE.md](docs/REDIS_CACHE.md)                     | **项目级 Redis / 缓存策略**（总览） |
 | [internal/module/user/CACHE.md](internal/module/user/CACHE.md) | 匹配查询缓存细节与流程图            |
+| [internal/module/team/TX_LOCK.md](internal/module/team/TX_LOCK.md) | **队伍事务 / team 行锁与 Join Redis 锁分工** |
 
 有疑问时：先看依赖图（第 3 节）和「放哪里」（第 7 节），再在对应目录下搜索现有 `user` 实现作为模板。

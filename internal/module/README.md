@@ -16,8 +16,8 @@ internal/module/<name>/
 
 | 模块 | 说明 |
 |------|------|
-| `user` | 注册登录、标签搜索、匹配与缓存预热 |
-| `team` | 队伍创建/加入/退出/解散、列表与分页（对齐 Java 参考） |
+| `user` | 注册登录、标签搜索、匹配与缓存预热（缓存见 [user/CACHE.md](user/CACHE.md)） |
+| `team` | 队伍创建/加入/退出/解散、列表与分页；事务与行锁见 [team/TX_LOCK.md](team/TX_LOCK.md) |
 
 新增业务时：
 
