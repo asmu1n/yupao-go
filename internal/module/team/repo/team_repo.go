@@ -24,14 +24,15 @@ func New(client *ent.Client) *EntRepository {
 	return &EntRepository{client: client}
 }
 
-func (r *EntRepository) CreateTeamWithLeader(ctx context.Context, t *team.Team, leaderID int64) (int64, error) {
+func (r *EntRepository) CreateTeamWithLeader(ctx context.Context, t *team.Team, leaderID int64) (id int64, err error) {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return 0, err
 	}
+	// 依赖命名返回值 err：任意失败路径（含 Commit 失败）都会触发 Rollback。
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback()
+			tx.Rollback()
 		}
 	}()
 
@@ -128,14 +129,15 @@ func (r *EntRepository) SoftDeleteTeam(ctx context.Context, id int64) error {
 }
 
 // SoftDeleteTeamAndMembersByLeader 锁定队伍并校验队长后解散。
-func (r *EntRepository) SoftDeleteTeamAndMembersByLeader(ctx context.Context, teamID, leaderID int64) error {
+func (r *EntRepository) SoftDeleteTeamAndMembersByLeader(ctx context.Context, teamID, leaderID int64) (err error) {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
 	}
+	// 依赖命名返回值 err：BizError / Commit 失败等路径均会 Rollback。
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback()
+			tx.Rollback()
 		}
 	}()
 
@@ -399,14 +401,15 @@ func (r *EntRepository) ListMembersByTeamOrdered(ctx context.Context, teamID int
 }
 
 // QuitMember 事务内锁定 team，原子完成退出 / 解散 / 队长移交。
-func (r *EntRepository) QuitMember(ctx context.Context, teamID, userID int64) (*team.QuitResult, error) {
+func (r *EntRepository) QuitMember(ctx context.Context, teamID, userID int64) (result *team.QuitResult, err error) {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return nil, err
 	}
+	// 依赖命名返回值 err：BizError / Commit 失败 / 内部 := 遮蔽后的 return 均会写入命名 err，defer 才能 Rollback。
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback()
+			tx.Rollback()
 		}
 	}()
 
@@ -450,9 +453,10 @@ func (r *EntRepository) QuitMember(ctx context.Context, teamID, userID int64) (*
 		return &team.QuitResult{Outcome: team.QuitOutcomeDisbanded}, nil
 	}
 
-	// 队长退出：在锁内选继任者并移交
+	// 队长退出：在锁内选继任者并移交（避免 err := 遮蔽命名返回值，统一用 =）
 	if t.UserID == userID {
-		members, err := tx.UserTeam.Query().
+		var members []*ent.UserTeam
+		members, err = tx.UserTeam.Query().
 			Where(entuserteam.TeamIDEQ(teamID), entuserteam.IsDeleteEQ(0)).
 			Order(ent.Asc(entuserteam.FieldID)).
 			All(ctx)
@@ -479,7 +483,8 @@ func (r *EntRepository) QuitMember(ctx context.Context, teamID, userID int64) (*
 			}
 			return nil, err
 		}
-		nUpd, err := tx.UserTeam.Update().
+		var nUpd int
+		nUpd, err = tx.UserTeam.Update().
 			Where(
 				entuserteam.UserIDEQ(userID),
 				entuserteam.TeamIDEQ(teamID),
@@ -500,7 +505,8 @@ func (r *EntRepository) QuitMember(ctx context.Context, teamID, userID int64) (*
 	}
 
 	// 普通成员退出
-	nUpd, err := tx.UserTeam.Update().
+	var nUpd int
+	nUpd, err = tx.UserTeam.Update().
 		Where(
 			entuserteam.UserIDEQ(userID),
 			entuserteam.TeamIDEQ(teamID),

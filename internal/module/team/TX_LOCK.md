@@ -67,6 +67,35 @@ COMMIT;                        -- 或 ROLLBACK
 
 本模块不单独维护 `errors.go` 领域哨兵错误，由仓储在判定点构造业务错误，减少 service 二次映射。
 
+### 2.4 事务 Rollback 与命名返回值
+
+持锁写路径统一使用 **命名返回值 `err`** + `defer`：
+
+```go
+func (...) (err error) {
+    tx, err := r.client.Tx(ctx)
+    if err != nil {
+        return err
+    }
+    defer func() {
+        if err != nil {
+            _ = tx.Rollback()
+        }
+    }()
+    // ...
+    return tx.Commit() // Commit 失败时命名 err 非 nil，defer 会 Rollback
+}
+```
+
+要点：
+
+1. **`return tx.Commit()` / `return BizError`** 在命名返回值下会写入 `err`，defer 能看到。  
+2. 若不用命名返回、只写 `return tx.Commit()`，外层 `err` 可能仍是 `nil`，**Commit 失败时 defer 不会 Rollback**。  
+3. 内层避免 `x, err := ...` 无必要地遮蔽 `err`；队长移交分支对查询/更新使用 `=` 赋给同一 `err`。  
+4. Commit 失败时库侧通常未提交；显式 Rollback 用于释放连接与行锁，不依赖连接池“顺手清理”。
+
+涉及：`CreateTeamWithLeader`、`SoftDeleteTeamAndMembersByLeader`、`QuitMember`。
+
 ---
 
 ## 3. 数据模型（与并发相关）
