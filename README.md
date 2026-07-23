@@ -49,6 +49,7 @@ yupao-go/
 ├── docker-compose.dev.yml   # 开发叠加：暴露依赖端口，默认不起 app
 ├── Dockerfile
 ├── .env.example
+├── .github/workflows/       # CI（test）+ Image（GHCR）
 └── test/                # 集成/连通类测试（可选）
 ```
 
@@ -162,7 +163,7 @@ go run ./cmd/server
 
 ```bash
 go build ./...
-go test ./...
+go test ./...   # test/ 包需要本机 Postgres（见 5.2）
 
 # 修改 ent/schema 后重新生成
 go generate ./ent
@@ -173,6 +174,30 @@ go generate ./ent
 ```bash
 go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 ```
+
+### 5.6 CI / 镜像（GitHub Actions）
+
+| Workflow | 触发 | 做什么 |
+| -------- | ---- | ------ |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PR、`main` push | 起 Postgres/Redis → `go test ./...` → `go build ./cmd/server` |
+| [`.github/workflows/image.yml`](.github/workflows/image.yml) | `main` push、`v*` tag | 先同样跑测试，再 build/push 镜像到 GHCR |
+
+镜像名（小写）：
+
+```text
+ghcr.io/<owner>/<repo>:<git-sha-short>
+ghcr.io/<owner>/<repo>:latest          # 仅 default branch
+ghcr.io/<owner>/<repo>:v1.2.3          # 仅 semver tag（如 v1.2.3）
+```
+
+首次从私有仓库拉镜像需登录：
+
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+docker pull ghcr.io/<owner>/<repo>:latest
+```
+
+Package 可见性在 GitHub → Packages 中调整。建议在仓库 Settings → Branches 为 `main` 开启 **Require status checks**（勾选 `CI / Test`），避免未测代码直接进主分支。
 
 ---
 
