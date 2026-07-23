@@ -14,15 +14,6 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  # CI runtime (same contract as prod-style env keys; not developer .env).
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
-  POSTGRES_DB: yupao_db
-  DB_HOST: localhost
-  POSTGRES_PORT: "5432"
-  REDIS_HOST: localhost
-  REDIS_PORT: "6379"
-  REDIS_PASSWORD: ""
 
 jobs:
   test:
@@ -30,17 +21,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # services.* cannot use ${{ env.* }} (env context not available there).
+    # Keep literals here in sync with job env below (CI test credentials).
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: yupao_db
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }}"
+          --health-cmd "pg_isready -U postgres -d yupao_db"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -54,7 +47,16 @@ jobs:
           --health-timeout 3s
           --health-retries 10
 
-    # Job inherits workflow env (DB_HOST, POSTGRES_*, REDIS_*) for go test.
+    # App client env for go test (must match services.postgres above).
+    env:
+      DB_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: yupao_db
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
 
     steps:
       - name: Checkout
