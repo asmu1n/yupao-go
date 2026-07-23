@@ -45,8 +45,10 @@ yupao-go/
 │   ├── infra/           # 基础设施实现（DB、Redis、缓存、锁、定时器）
 │   ├── pkg/             # 公共库（logger、分页、统一响应、基础类型）
 │   └── config/          # 环境变量加载
-├── docker-compose.dev.yml
+├── docker-compose.yml       # 公共底座：postgres / redis / app
+├── docker-compose.dev.yml   # 开发叠加：暴露依赖端口，默认不起 app
 ├── Dockerfile
+├── .env.example
 └── test/                # 集成/连通类测试（可选）
 ```
 
@@ -126,9 +128,18 @@ GET /api/user/match
 ### 5.2 基础设施
 
 ```bash
-# 准备 .env（参考仓库内环境变量约定：Postgres / Redis 等）
-docker compose -f docker-compose.dev.yml up -d
+# 准备环境变量（契约见 .env.example）
+cp .env.example .env
+
+# 仅启动 Postgres + Redis（本机 go run 使用）
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# 可选：容器内全栈（app 也进 compose，需 --profile full）
+# docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile full up -d --build
 ```
+
+本机跑 API 时 `.env` 使用 `DB_HOST=localhost`、`REDIS_HOST=localhost`，端口与 `*_HOST_PORT` 映射一致。  
+compose 内的 app 由 `docker-compose.yml` 注入 `DB_HOST=postgres` / `REDIS_HOST=redis` 及容器内端口。
 
 ### 5.3 运行 API
 
@@ -140,6 +151,7 @@ docker compose -f docker-compose.dev.yml up -d
 #   ENV=prod   # 未设 LOG_FORMAT 时 prod/production 默认 json
 go run ./cmd/server
 # 默认 :8080
+# 健康检查：http://localhost:8080/health
 # Swagger UI：http://localhost:8080/swagger/index.html
 # 生成物目录：docs/api/swagger（import: yupao-go/docs/api/swagger）
 ```
