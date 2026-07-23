@@ -24,8 +24,8 @@ func loadConfig() (*Config, error) {
 	return &Config{
 		Host:     config.GetEnv("DB_HOST", "localhost"),
 		Port:     config.GetEnv("POSTGRES_PORT", "5432"),
-		Username: config.GetEnv("POSTGRES_USER", "root"),
-		Password: config.GetEnv("POSTGRES_PASSWORD", "root"),
+		Username: config.GetEnv("POSTGRES_USER", "postgres"),
+		Password: config.GetEnv("POSTGRES_PASSWORD", "postgres"),
 		DBName:   config.GetEnv("POSTGRES_DB", "yupao_db"),
 	}, nil
 }

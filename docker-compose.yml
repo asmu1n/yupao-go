@@ -1,5 +1,6 @@
 # Base stack: postgres + redis + app.
-# Container-network defaults: app talks to service names on internal ports.
+# Runtime secrets/hosts come from env / .env (see .env.example).
+# Dev host port mapping is fixed in docker-compose.dev.yml (not parameterized).
 #
 # Dev (deps only, Go on host):
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
@@ -45,7 +46,7 @@ services:
       dockerfile: Dockerfile
     image: ${APP_IMAGE:-yupao-go:local}
     environment:
-      # In-compose networking: service names + container ports (not host-mapped ports).
+      # In-compose network: service DNS names (not host localhost).
       DB_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -59,7 +60,7 @@ services:
       LOG_FORMAT: ${LOG_FORMAT:-}
       SERVICE_NAME: ${SERVICE_NAME:-yupao-api}
     ports:
-      - "${APP_HOST_PORT:-8080}:8080"
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy

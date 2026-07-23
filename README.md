@@ -49,7 +49,7 @@ yupao-go/
 ├── docker-compose.dev.yml   # 开发叠加：暴露依赖端口，默认不起 app
 ├── Dockerfile
 ├── .env.example
-├── .github/workflows/       # CI（test）+ Image（GHCR）
+├── .github/workflows/       # CI：test 门禁 + 条件构建推 GHCR
 └── test/                # 集成/连通类测试（可选）
 ```
 
@@ -129,27 +129,32 @@ GET /api/user/match
 ### 5.2 基础设施
 
 ```bash
-# 准备环境变量（契约见 .env.example）
-cp .env.example .env
-
-# 仅启动 Postgres + Redis（本机 go run 使用）
+# 本地默认即可跑：代码默认 localhost + postgres/postgres，与 compose 一致
+# 仅启动 Postgres + Redis（本机 go run 使用；宿主端口固定 5432/6379）
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # 可选：容器内全栈（app 也进 compose，需 --profile full）
 # docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile full up -d --build
+
+# 需要覆盖密钥 / 远端地址 / 日志时再复制（契约见 .env.example）
+# cp .env.example .env
 ```
 
-本机跑 API 时 `.env` 使用 `DB_HOST=localhost`、`REDIS_HOST=localhost`，端口与 `*_HOST_PORT` 映射一致。  
-compose 内的 app 由 `docker-compose.yml` 注入 `DB_HOST=postgres` / `REDIS_HOST=redis` 及容器内端口。
+**环境变量分层：**
+
+| 场景 | 需要什么 |
+| ---- | -------- |
+| 本机 `go run` + compose 依赖 | 通常 **不用** `.env`（默认 `DB_HOST/REDIS_HOST=localhost`） |
+| compose 内 `app` | compose **写死** `DB_HOST=postgres`、`REDIS_HOST=redis`；账号等来自 env / `.env` |
+| CI | `ci.yml` 自带一套与 app 契约一致的 env（不读开发者 `.env`） |
+| 生产 / 预发 | 注入 `.env.example` 中的运行时项（库账号、主机、Redis、日志等） |
+
+开发期几乎不改的宿主端口映射已写死在 `docker-compose.dev.yml`，不再做成 `*_HOST_PORT` 配置项。
 
 ### 5.3 运行 API
 
 ```bash
-# 可选日志相关环境变量：
-#   LOG_LEVEL=debug|info|warn|error
-#   LOG_FORMAT=text|json
-#   SERVICE_NAME=yupao-api
-#   ENV=prod   # 未设 LOG_FORMAT 时 prod/production 默认 json
+# 生产/预发常见覆盖见 .env.example（LOG_LEVEL / ENV / SERVICE_NAME / DB_* / REDIS_* …）
 go run ./cmd/server
 # 默认 :8080
 # 健康检查：http://localhost:8080/health
@@ -177,10 +182,14 @@ go run ./cmd/seed -h   # 查看参数；可生成批量用户 SQL
 
 ### 5.6 CI / 镜像（GitHub Actions）
 
-| Workflow | 触发 | 做什么 |
-| -------- | ---- | ------ |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PR、`main` push | 起 Postgres/Redis → `go test ./...` → `go build ./cmd/server` |
-| [`.github/workflows/image.yml`](.github/workflows/image.yml) | `main` push、`v*` tag | 先同样跑测试，再 build/push 镜像到 GHCR |
+单条流水线 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)：
+
+| Job | 何时跑 | 做什么 |
+| --- | ------ | ------ |
+| **Test** | 所有 PR；`main` push；`v*` tag | 起 Postgres/Redis → `go test ./...` → `go build ./cmd/server` |
+| **Build and push** | 仅 `push` 到 `main` 或 `v*` tag，且 Test 已通过 | build/push 镜像到 GHCR |
+
+PR 只跑 Test，不打镜像；main / 发版 tag 在同一 run 内先测后推，避免双 workflow 重复测试。
 
 镜像名（小写）：
 
